@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-using System.Linq;
 using MassTransit;
-using System.Threading.Tasks;
-using Common;
-using System;
+using Sales.Models;
+
 
 namespace Sales.Controllers
 {
@@ -12,18 +10,19 @@ namespace Sales.Controllers
     [Route("sales/[controller]")]
     public class BooksController : ControllerBase
     {
+        private BookContext _bookContext;
         public readonly IPublishEndpoint _publishEndpoint;
-        private static readonly List<Book> Books = new List<Book>();
 
-        public BooksController(IPublishEndpoint publishEndpoint)
+        public BooksController(IPublishEndpoint publishEndpoint, BookContext bookContext)
         {
+            _bookContext = bookContext;
             _publishEndpoint = publishEndpoint;
         }
 
         [HttpGet]
         public IEnumerable<Book> GetBooks()
         {
-            return Books;
+            return _bookContext.BookItems;
         }
     }
 }

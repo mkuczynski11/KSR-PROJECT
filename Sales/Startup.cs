@@ -8,6 +8,8 @@ using Sales.Configuration;
 using MassTransit;
 using Common;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Sales.Models;
 
 namespace Sales
 {
@@ -22,12 +24,19 @@ namespace Sales
 
         class NewBookSalesInfoConsumer : IConsumer<NewBookSalesInfo>
         {
+            private BookContext _bookContext;
+            public NewBookSalesInfoConsumer(BookContext bookContext)
+            {
+                _bookContext = bookContext;
+            }
             public async Task Consume(ConsumeContext<NewBookSalesInfo> context)
             {
                 var bookID = context.Message.ID;
                 var bookPrice = context.Message.price;
-                Console.WriteLine($"New book to register: {bookID}, price={bookPrice}");
-                // TODO: save info
+                Book book = new Book(bookID, bookPrice);
+                _bookContext.Add(book);
+                _bookContext.SaveChanges();
+                Console.WriteLine($"New book registered: {bookID}, price={bookPrice}");
             }
         }
 
@@ -38,21 +47,23 @@ namespace Sales
 
             services.AddMassTransit(x =>
             {
-                x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
+                x.AddConsumer<NewBookSalesInfoConsumer>();
+                x.UsingRabbitMq((context, cfg) =>
                 {
-                    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
+                    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), settings =>
                     {
-                        hostConfigurator.Username(rabbitConfiguration.Username);
-                        hostConfigurator.Password(rabbitConfiguration.Password);
+                        settings.Username(rabbitConfiguration.Username);
+                        settings.Password(rabbitConfiguration.Password);
                     });
 
                     cfg.ReceiveEndpoint("sales-book-creation-event", ep =>
                     {
-                        ep.Consumer<NewBookSalesInfoConsumer>();
+                        ep.ConfigureConsumer<NewBookSalesInfoConsumer>(context);
                     });
-                }));
+                });
             });
 
+            services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("SalesBookList"));
             services.AddControllers();
         }
 

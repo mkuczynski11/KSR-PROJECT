@@ -7,6 +7,8 @@ using Warehouse.Configuration;
 using System;
 
 using MassTransit;
+using Warehouse.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Warehouse
 {
@@ -36,6 +38,7 @@ namespace Warehouse
                 }));
             });
 
+            services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("WarehouseBookList"));
             services.AddControllers();
         }
 

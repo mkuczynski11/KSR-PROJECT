@@ -5,6 +5,7 @@ using MassTransit;
 using System.Threading.Tasks;
 using Common;
 using System;
+using Warehouse.Models;
 
 namespace Warehouse.Controllers
 {
@@ -12,25 +13,26 @@ namespace Warehouse.Controllers
     [Route("warehouse/[controller]")]
     public class BooksController : ControllerBase
     {
+        private readonly BookContext _bookContext;
         public readonly IPublishEndpoint _publishEndpoint;
-        private static readonly List<Book> Books = new List<Book>();
 
-        public BooksController(IPublishEndpoint publishEndpoint)
+        public BooksController(IPublishEndpoint publishEndpoint, BookContext bookContext)
         {
+            _bookContext = bookContext;
             _publishEndpoint = publishEndpoint;
         }
 
         [HttpGet]
         public IEnumerable<Book> Get()
         {
-            return Books;
+            return _bookContext.BookItems;
         }
         // TODO: decide if we should keep an option to get a single book from warehouse
         [HttpGet("{id}")]
         public BookResponse GetBook(string id)
         {
             Console.WriteLine($"Book with ID:{id} requested");
-            Book book = Books.SingleOrDefault(b => b.ID.Equals(id));
+            Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(id));
             if (book == null) return new BookResponse { name = "", quantity = -1, price = -1, discount = -1 };
 
             // TODO: saga in which we ask sales and marketing for the book info
@@ -45,7 +47,8 @@ namespace Warehouse.Controllers
 
             Book book = new Book(ID, request.name, request.quantity);
 
-            Books.Add(book);
+            _bookContext.BookItems.Add(book);
+            _bookContext.SaveChanges();
 
             Console.WriteLine($"Sending info:{ID}, price={request.price} to sales department");
             await _publishEndpoint.Publish<NewBookSalesInfo>(new

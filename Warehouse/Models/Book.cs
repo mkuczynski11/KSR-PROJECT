@@ -1,6 +1,6 @@
 using System;
 
-namespace Warehouse
+namespace Warehouse.Models
 {
     public class Book
     {

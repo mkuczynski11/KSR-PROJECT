@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Marketing
+namespace Marketing.Models
 {
     public class Book
     {
