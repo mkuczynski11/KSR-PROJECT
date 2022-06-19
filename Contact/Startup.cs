@@ -1,12 +1,18 @@
+using Contact.Configuration;
+using Contact.Models;
+using MassTransit;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Contact
 {
@@ -19,25 +25,36 @@ namespace Contact
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddRazorPages();
+            var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
+
+            services.AddMassTransit(x =>
+            {
+                x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
+                {
+                    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
+                    {
+                        hostConfigurator.Username(rabbitConfiguration.Username);
+                        hostConfigurator.Password(rabbitConfiguration.Password);
+                    });
+                    cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
+                    {
+                        //TODO: Attach state machine
+                    });
+                }));
+            });
+
+            services.AddDbContext<OrderContext>(opt => opt.UseInMemoryDatabase("ContactOrderList"));
+            services.AddControllers();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
-            else
-            {
-                app.UseExceptionHandler("/Error");
-            }
-
-            app.UseStaticFiles();
 
             app.UseRouting();
 
@@ -45,7 +62,7 @@ namespace Contact
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapRazorPages();
+                endpoints.MapControllers();
             });
         }
     }
