@@ -1,9 +1,10 @@
-﻿using MassTransit;
+using MassTransit;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MassTransit;
 
 namespace Common
 {
@@ -84,4 +85,36 @@ namespace Common
     public interface ShippingShipmentSent : CorrelatedBy<Guid> { }
     public interface ShippingShipmentNotSent : CorrelatedBy<Guid> { }
     /* ORDER SAGA SECTION END*/
+    public interface BookQuantityCheck
+    {
+        string ID { get; set; }
+        int quantity { get; set; }
+    }
+    public interface DeliveryCheck
+    {
+        double price { get; set; }
+        string method { get; set; }
+    }
+    public interface ShippingRequest : CorrelatedBy<Guid>
+    {
+        string ID { get; set; }
+        int quantity { get; set; }
+    }
+    public interface WarehouseDeliveryRequest : CorrelatedBy<Guid>
+    {
+        string ID { get; set; }
+        int quantity { get; set; }
+    }
+    public interface WarehouseDeliveryConfirmation : CorrelatedBy<Guid>
+    {
+    }
+    public interface WarehouseDeliveryRejection : CorrelatedBy<Guid>
+    {
+    }
+    public interface ShippingConfirmed
+    {
+    }
+    public interface ShippingRejected
+    {
+    }
 }

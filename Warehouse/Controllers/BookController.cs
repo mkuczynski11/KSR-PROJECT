@@ -66,5 +66,21 @@ namespace Warehouse.Controllers
 
             return Ok();
         }
+        //TODO: remove since it is here for testing purposes
+        [HttpPost("testSaga/test")]
+        public async Task<IActionResult> TestSaga()
+        {
+            Console.WriteLine("testing saga");
+            Book book = new Book("asd", "name", 1);
+            _bookContext.BookItems.Add(book);
+            _bookContext.SaveChanges();
+            await _publishEndpoint.Publish<ShippingRequest>(new
+            {
+                ID = "asd",
+                quantity = 1
+            });
+
+            return Ok();
+        }
     }
 }

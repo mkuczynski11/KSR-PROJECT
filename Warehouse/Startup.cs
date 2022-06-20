@@ -5,10 +5,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Warehouse.Configuration;
 using System;
+using System.Linq;
 
 using MassTransit;
 using Warehouse.Models;
 using Microsoft.EntityFrameworkCore;
+using Common;
+using System.Threading.Tasks;
 
 namespace Warehouse
 {
@@ -28,14 +31,27 @@ namespace Warehouse
 
             services.AddMassTransit(x =>
             {
-                x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
+                x.AddConsumer<WarehouseDeliveryRequestConsumer>();
+                //TODO: remove conumser
+                x.AddConsumer<ShippingConfirmedConsumer>();
+                x.UsingRabbitMq((context, cfg) =>
                 {
-                    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
+                    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), settings =>
                     {
-                        hostConfigurator.Username(rabbitConfiguration.Username);
-                        hostConfigurator.Password(rabbitConfiguration.Password);
+                        settings.Username(rabbitConfiguration.Username);
+                        settings.Password(rabbitConfiguration.Password);
                     });
-                }));
+
+                    cfg.ReceiveEndpoint("warehouse-delivery-request-event", ep =>
+                    {
+                        ep.ConfigureConsumer<WarehouseDeliveryRequestConsumer>(context);
+                    });
+                    //TODO: remove consumer
+                    cfg.ReceiveEndpoint("test-test-test", ep =>
+                    {
+                        ep.ConfigureConsumer<ShippingConfirmedConsumer>(context);
+                    });
+                });
             });
 
             services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("WarehouseBookList"));
@@ -58,6 +74,52 @@ namespace Warehouse
             {
                 endpoints.MapControllers();
             });
+        }
+        class WarehouseDeliveryRequestConsumer : IConsumer<WarehouseDeliveryRequest>
+        {
+            private BookContext _bookContext;
+            public readonly IPublishEndpoint _publishEndpoint;
+            public WarehouseDeliveryRequestConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            {
+                _publishEndpoint = publishEndpoint;
+                _bookContext = bookContext;
+            }
+            public async Task Consume(ConsumeContext<WarehouseDeliveryRequest> context)
+            {
+                var bookID = context.Message.ID;
+                var bookQuantity = context.Message.quantity;
+
+                Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(bookID));
+                bool valid = true;
+                if (book == null) valid = false;
+                else if (book.quantity < bookQuantity) valid = false;
+
+                if (valid)
+                {
+                    Console.WriteLine($"Book={bookID} can successfully deliver {bookQuantity} amount of it.");
+                    await _publishEndpoint.Publish<WarehouseDeliveryConfirmation>(new { });
+                }
+                else
+                {
+                    Console.WriteLine($"Book={bookID} is not in warehouse or cannot deliver {bookQuantity} amount of it.");
+                    await _publishEndpoint.Publish<WarehouseDeliveryRejection>(new { });
+                }
+            }
+        }
+        class ShippingConfirmedConsumer : IConsumer<ShippingConfirmed>
+        {
+            private BookContext _bookContext;
+            public readonly IPublishEndpoint _publishEndpoint;
+            public ShippingConfirmedConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            {
+                _publishEndpoint = publishEndpoint;
+                _bookContext = bookContext;
+            }
+            //TODO: remove since it is here for testing purposes
+            public async Task Consume(ConsumeContext<ShippingConfirmed> context)
+            {
+                Console.WriteLine($"LESSS GOOOO");
+            }
         }
     }
 }
