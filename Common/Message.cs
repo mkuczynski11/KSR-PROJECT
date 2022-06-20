@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MassTransit;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,5 +16,16 @@ namespace Common
     {
         string ID { get; set; }
         int discount { get; set; }
+    }
+
+    public interface NewOrderStart : CorrelatedBy<Guid>
+    {
+        string BookID { get; set; }
+        string BookName { get; set; }
+        string BookQuantity { get; set; }
+        double BookPrice { get; set; }
+        double BookDiscount { get; set; }
+        string DeliveryMethod { get; set; }
+        string DeliveryPrice { get; set; }
     }
 }

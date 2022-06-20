@@ -40,7 +40,7 @@ namespace Contact
                     });
                     cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
                     {
-                        //TODO: Attach state machine
+                        ep.StateMachineSaga(new OrderSaga(), new InMemorySagaRepository<OrderSagaData>());
                     });
                 }));
             });

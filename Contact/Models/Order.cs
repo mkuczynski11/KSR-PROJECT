@@ -8,12 +8,13 @@ namespace Contact.Models
     public class Order
     {
         public string ID { get; set; }
-        public string ClientName { get; set; }
         public bool IsConfirmedByClient { get; set; }
         public bool IsConfirmedByWarehouse { get; set; }
         public bool IsConfirmedBySales { get; set; }
         public bool IsConfirmedByMarketing { get; set; }
         public bool IsConfirmedByShipping { get; set; }
+        public bool IsPaid { get; set; }
+        public bool IsShipped { get; set; }
 
         public Order() 
         {
@@ -22,17 +23,20 @@ namespace Contact.Models
             IsConfirmedBySales = false;
             IsConfirmedByMarketing = false;
             IsConfirmedByShipping = false;
+            IsPaid = false;
+            IsShipped = false;
         }
 
-        public Order(string iD, string clientName)
+        public Order(string iD)
         {
             ID = iD;
-            ClientName = clientName;
             IsConfirmedByClient = false;
             IsConfirmedByWarehouse = false;
             IsConfirmedBySales = false;
             IsConfirmedByMarketing = false;
             IsConfirmedByShipping = false;
+            IsPaid = false;
+            IsShipped = false;
         }
 
         public bool isConfirmed()
