@@ -34,7 +34,7 @@ namespace Contact.Controllers
             _orderContext.OrderItems.Add(order);
             _orderContext.SaveChanges();
 
-            _publishEndpoint.Publish<NewOrderStart>(new
+            _publishEndpoint.Publish<OrderStart>(new
             {
                 CorrelationId = ID,
                 BookID = request.BookID,
@@ -60,6 +60,30 @@ namespace Contact.Controllers
             _orderContext.OrderItems.Update(order);
             _orderContext.SaveChanges();
 
+            _publishEndpoint.Publish<ClientConfirmationAccept>(new
+            {
+                CorrelationId = order.ID
+            });
+
+            return Ok();
+        }
+
+        [HttpPost("orders/{id}/cancel")]
+        public ActionResult CancelOrder(string id)
+        {
+            Console.WriteLine($"Order with ID:{id} canceled");
+            Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
+            if (order == null) return NotFound();
+
+            order.IsConfirmedByClient = false;
+            _orderContext.OrderItems.Update(order);
+            _orderContext.SaveChanges();
+
+            _publishEndpoint.Publish<ClientConfirmationRefuse>(new
+            {
+                CorrelationId = order.ID
+            });
+
             return Ok();
         }
 
@@ -69,6 +93,8 @@ namespace Contact.Controllers
             Console.WriteLine($"Order status with ID:{id} requested");
             Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
             if (order == null) return NotFound();
+
+            if (order.IsCanceled) return new OrderStatusResponse { Status = "Canceled" };
 
             if (order.isConfirmed())
             {

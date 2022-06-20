@@ -15,6 +15,7 @@ namespace Contact.Models
         public bool IsConfirmedByShipping { get; set; }
         public bool IsPaid { get; set; }
         public bool IsShipped { get; set; }
+        public bool IsCanceled { get; set; }
 
         public Order() 
         {
@@ -25,6 +26,7 @@ namespace Contact.Models
             IsConfirmedByShipping = false;
             IsPaid = false;
             IsShipped = false;
+            IsCanceled = false;
         }
 
         public Order(string iD)
@@ -37,6 +39,7 @@ namespace Contact.Models
             IsConfirmedByShipping = false;
             IsPaid = false;
             IsShipped = false;
+            IsCanceled = false;
         }
 
         public bool isConfirmed()

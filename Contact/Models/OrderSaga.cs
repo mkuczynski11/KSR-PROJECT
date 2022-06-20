@@ -20,7 +20,7 @@ namespace Contact.Models
         public State AwaitingPayment { get; private set; }
         public State AwaitingShipment { get; private set; }
 
-        public Event<NewOrderStart> newOrderStart { get; private set; }
+        public Event<OrderStart> newOrderStart { get; private set; }
 
         public OrderSaga()
         {
