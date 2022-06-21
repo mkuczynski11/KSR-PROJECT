@@ -82,5 +82,27 @@ namespace Warehouse.Controllers
 
             return Ok();
         }
+        //TODO: remove since it is here for testing purposes
+        [HttpPost("test/checkTest")]
+        public async Task<IActionResult> CheckTest()
+        {
+            Console.WriteLine("testing check messages");
+            Book book = new Book("asd", "name", 13);
+            _bookContext.BookItems.Add(book);
+            _bookContext.SaveChanges();
+            await _publishEndpoint.Publish<BookQuantityCheck>(new
+            {
+                ID = "asd",
+                quantity = 8
+            });
+
+            await _publishEndpoint.Publish<DeliveryCheck>(new
+            {
+                price = 10.0,
+                method = "DPD"
+            });
+
+            return Ok();
+        }
     }
 }

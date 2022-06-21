@@ -5,12 +5,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Shipping.Configuration;
 using System;
+using System.Linq;
 
 using MassTransit;
 using Shipping.Models;
 using Microsoft.EntityFrameworkCore;
 using Common;
-
+using System.Threading.Tasks;
 
 namespace Shipping
 {
@@ -32,19 +33,26 @@ namespace Shipping
 
             services.AddMassTransit(x =>
             {
-                x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
+                x.AddConsumer<DeliveryCheckConsumer>();
+                x.UsingRabbitMq((context, cfg) =>
                 {
-                    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
+                    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), settings =>
                     {
-                        hostConfigurator.Username(rabbitConfiguration.Username);
-                        hostConfigurator.Password(rabbitConfiguration.Password);
+                        settings.Username(rabbitConfiguration.Username);
+                        settings.Password(rabbitConfiguration.Password);
                     });
 
-                    cfg.ReceiveEndpoint("shippingSagaQueue", ep =>
+                    cfg.ReceiveEndpoint("shipping-saga-queue", ep =>
                     {
                         ep.StateMachineSaga(machine, repo);
                     });
-                }));
+
+                    cfg.ReceiveEndpoint("shipping-delivery-confirmation-request-event", ep =>
+                    {
+                        ep.ConfigureConsumer<DeliveryCheckConsumer>(context);
+                    });
+
+                });
             });
 
             services.AddDbContext<ShippingContext>(opt => opt.UseInMemoryDatabase("ShippingInfo"));
@@ -134,6 +142,36 @@ namespace Shipping
             public string CurrentState { get; set; }
             public string bookID { get; set; }
             public int bookQuantity { get; set; }
+        }
+
+        class DeliveryCheckConsumer : IConsumer<DeliveryCheck>
+        {
+            private ShippingContext _shippingContext;
+            public readonly IPublishEndpoint _publishEndpoint;
+            public DeliveryCheckConsumer(ShippingContext shippingContext, IPublishEndpoint publishEndpoint)
+            {
+                _publishEndpoint = publishEndpoint;
+                _shippingContext = shippingContext;
+            }
+            public async Task Consume(ConsumeContext<DeliveryCheck> context)
+            {
+                var deliveryPrice = context.Message.price;
+                var deliveryMethod = context.Message.method;
+
+                Price price = _shippingContext.PriceItems.SingleOrDefault(b => b.price.Equals(deliveryPrice));
+                Method method = _shippingContext.MethodItems.SingleOrDefault(b => b.method.Equals(deliveryMethod));
+
+                if (price != null && method != null)
+                {
+                    Console.WriteLine($"Delivery information is valid.");
+                    await _publishEndpoint.Publish<BookQuantityConfirmation>(new { });
+                }
+                else
+                {
+                    Console.WriteLine($"Delivery information is invalid.");
+                    await _publishEndpoint.Publish<BookQuantityRejection>(new { });
+                }
+            }
         }
     }
 }
