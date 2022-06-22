@@ -49,18 +49,6 @@ namespace Contact
                         ep.ConfigureSaga<OrderSagaData>(context);
                     });
                 });
-                //x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
-                //{
-                //    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
-                //    {
-                //        hostConfigurator.Username(rabbitConfiguration.Username);
-                //        hostConfigurator.Password(rabbitConfiguration.Password);
-                //    });
-                //    //cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
-                //    //{
-                //    //    ep.StateMachineSaga(new OrderSaga(), new InMemorySagaRepository<OrderSagaData>());
-                //    //});
-                //}));
             });
 
             services.AddDbContext<OrderContext>(opt => opt.UseInMemoryDatabase("ContactOrderList"));

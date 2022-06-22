@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
-VisualStudioVersion = 16.0.31829.152
+VisualStudioVersion = 16.0.32126.315
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{768B34FA-3B32-4C59-8CB3-010EEC3D5C47}"
 EndProject
@@ -9,13 +9,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Warehouse", "Warehouse\Ware
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sales", "Sales\Sales.csproj", "{A79404FC-8430-4ADE-A6D3-A119C304FC41}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Accounting", "Accounting\Accounting.csproj", "{B13BBFCF-9F29-4C54-B987-28B0A2399D84}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shipping", "Shipping\Shipping.csproj", "{0925D36D-840E-408C-A14D-CB0ECE778A87}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Marketing", "Marketing\Marketing.csproj", "{F6632017-6DAC-4C30-A4C2-781F3E47D669}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contact", "Contact\Contact.csproj", "{5CD16D95-C55D-4FC7-B905-99EEF16D9916}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contact", "Contact\Contact.csproj", "{5CD16D95-C55D-4FC7-B905-99EEF16D9916}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Accounting", "Accounting\Accounting.csproj", "{0CF717E8-709A-49C0-90D7-A286A254B370}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,10 +35,6 @@ Global
 		{A79404FC-8430-4ADE-A6D3-A119C304FC41}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A79404FC-8430-4ADE-A6D3-A119C304FC41}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A79404FC-8430-4ADE-A6D3-A119C304FC41}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B13BBFCF-9F29-4C54-B987-28B0A2399D84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B13BBFCF-9F29-4C54-B987-28B0A2399D84}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B13BBFCF-9F29-4C54-B987-28B0A2399D84}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B13BBFCF-9F29-4C54-B987-28B0A2399D84}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0925D36D-840E-408C-A14D-CB0ECE778A87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0925D36D-840E-408C-A14D-CB0ECE778A87}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0925D36D-840E-408C-A14D-CB0ECE778A87}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -51,6 +47,10 @@ Global
 		{5CD16D95-C55D-4FC7-B905-99EEF16D9916}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5CD16D95-C55D-4FC7-B905-99EEF16D9916}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5CD16D95-C55D-4FC7-B905-99EEF16D9916}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CF717E8-709A-49C0-90D7-A286A254B370}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CF717E8-709A-49C0-90D7-A286A254B370}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CF717E8-709A-49C0-90D7-A286A254B370}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CF717E8-709A-49C0-90D7-A286A254B370}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
