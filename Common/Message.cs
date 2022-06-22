@@ -74,6 +74,7 @@ namespace Common
     public interface AccountingInvoicePublish : CorrelatedBy<Guid> { }
     public interface AccountingInvoiceCancel : CorrelatedBy<Guid> { }
     public interface AccountingInvoicePaid : CorrelatedBy<Guid> { }
+    public interface AccountingInvoiceNotPaid : CorrelatedBy<Guid> { }
     public interface ShippingShipmentStart : CorrelatedBy<Guid>
     {
         string DeliveryMethod { get; set; }

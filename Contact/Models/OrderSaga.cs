@@ -41,6 +41,7 @@ namespace Contact.Models
         public Event<ShippingConfirmationRefuse> ShippingConfirmationRefuseEvent { get; private set; }
 
         public Event<AccountingInvoicePaid> AccountingInvoicePaidEvent { get; private set; }
+        public Event<AccountingInvoiceNotPaid> AccountingInvoiceNotPaidEvent { get; private set; }
 
         public Event<ShippingShipmentSent> ShippingShipmentSentEvent { get; private set; }
         public Event<ShippingShipmentNotSent> ShippingShipmentNotSentEvent { get; private set; }
@@ -113,7 +114,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedByClient = true;
                         orders.OrderItems.Update(order);
@@ -138,7 +139,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedByWarehouse = true;
                         orders.OrderItems.Update(order);
@@ -163,7 +164,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedBySales = true;
                         orders.OrderItems.Update(order);
@@ -188,7 +189,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedByMarketing = true;
                         orders.OrderItems.Update(order);
@@ -213,7 +214,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedByShipping = true;
                         orders.OrderItems.Update(order);
@@ -239,7 +240,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedByClient = false;
                         order.IsCanceled = true;
@@ -262,7 +263,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedByWarehouse = false;
                         order.IsCanceled = true;
@@ -285,7 +286,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedBySales = false;
                         order.IsCanceled = true;
@@ -308,7 +309,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedByMarketing = false;
                         order.IsCanceled = true;
@@ -331,7 +332,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsConfirmedByShipping = false;
                         order.IsCanceled = true;
@@ -357,7 +358,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsPaid = true;
                         orders.OrderItems.Update(order);
@@ -372,7 +373,25 @@ namespace Contact.Models
                         BookQuantity = context.Saga.BookQuantity
                     });
                 })
-                .TransitionTo(AwaitingShipment)
+                .TransitionTo(AwaitingShipment),
+                When(AccountingInvoiceNotPaidEvent)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"has not been paid by client.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (order != null)
+                    {
+                        order.IsPaid = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+                })
+                .Finalize()
                 );
 
             During(AwaitingShipment,
@@ -385,7 +404,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsShipped = true;
                         orders.OrderItems.Update(order);
@@ -403,7 +422,7 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (orders != null)
+                    if (order != null)
                     {
                         order.IsShipped = false;
                         order.IsCanceled = true;
