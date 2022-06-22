@@ -77,6 +77,60 @@ namespace Contact.Controllers
             return Ok();
         }
 
+        [HttpPost("orders/{id}/test1")]
+        public ActionResult Test1Order(string id)
+        {
+            Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
+            if (order == null) return NotFound();
+
+            _publishEndpoint.Publish<WarehouseConfirmationAccept>(new
+            {
+                CorrelationId = order.ID
+            });
+            _publishEndpoint.Publish<SalesConfirmationAccept>(new
+            {
+                CorrelationId = order.ID
+            });
+            _publishEndpoint.Publish<MarketingConfirmationAccept>(new
+            {
+                CorrelationId = order.ID
+            });
+            _publishEndpoint.Publish<ShippingConfirmationAccept>(new
+            {
+                CorrelationId = order.ID
+            });
+
+            return Ok();
+        }
+
+        [HttpPost("orders/{id}/test2")]
+        public ActionResult Test2Order(string id)
+        {
+            Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
+            if (order == null) return NotFound();
+
+            _publishEndpoint.Publish<AccountingInvoicePaid>(new
+            {
+                CorrelationId = order.ID
+            });
+
+            return Ok();
+        }
+
+        [HttpPost("orders/{id}/test3")]
+        public ActionResult Test3Order(string id)
+        {
+            Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
+            if (order == null) return NotFound();
+
+            _publishEndpoint.Publish<ShippingShipmentSent>(new
+            {
+                CorrelationId = order.ID
+            });
+
+            return Ok();
+        }
+
         [HttpGet("orders/{id}/status")]
         public ActionResult<OrderStatusResponse> GetStatus(string id)
         {

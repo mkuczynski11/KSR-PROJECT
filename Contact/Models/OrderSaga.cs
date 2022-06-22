@@ -13,6 +13,9 @@ namespace Contact.Models
         public Guid CorrelationId { get; set; }
         public Guid? TimeoutId { get; set; }
         public string CurrentState { get; set; }
+        public string DeliveryMethod { get; set; }
+        public double DeliveryPrice { get; set; }
+        public int BookQuantity { get; set; }
     }
 
     public class OrderSaga : MassTransitStateMachine<OrderSagaData>, IDisposable
@@ -37,6 +40,11 @@ namespace Contact.Models
         public Event<MarketingConfirmationRefuse> MarketingConfirmationRefuseEvent { get; private set; }
         public Event<ShippingConfirmationRefuse> ShippingConfirmationRefuseEvent { get; private set; }
 
+        public Event<AccountingInvoicePaid> AccountingInvoicePaidEvent { get; private set; }
+
+        public Event<ShippingShipmentSent> ShippingShipmentSentEvent { get; private set; }
+        public Event<ShippingShipmentNotSent> ShippingShipmentNotSentEvent { get; private set; }
+
         public OrderSaga(IServiceProvider services)
         {
             _scope = services.CreateScope();
@@ -49,6 +57,10 @@ namespace Contact.Models
                 {
                     Console.WriteLine($"Started new order saga: ID={context.Message.CorrelationId}, " +
                         $"sending confirmation requests to all parties.");
+
+                    context.Saga.DeliveryMethod = context.Message.DeliveryMethod;
+                    context.Saga.DeliveryPrice = context.Message.DeliveryPrice;
+                    context.Saga.BookQuantity = context.Message.BookQuantity;
                 })
                 .PublishAsync(context => context.Init<WarehouseConfirmation>(new
                 {
@@ -75,6 +87,17 @@ namespace Contact.Models
                     DeliveryMethod = context.Message.DeliveryMethod,
                     DeliveryPrice = context.Message.DeliveryPrice
                 }))
+                .PublishAsync(context => context.Init<AccountingInvoiceStart>(new
+                {
+                    CorrelationId = context.Message.CorrelationId,
+                    BookID = context.Message.BookID,
+                    BookName = context.Message.BookName,
+                    BookQuantity = context.Message.BookQuantity,
+                    BookPrice = context.Message.BookPrice,
+                    BookDiscount = context.Message.BookDiscount,
+                    DeliveryMethod = context.Message.DeliveryMethod,
+                    DeliveryPrice = context.Message.DeliveryPrice
+                }))
                 .TransitionTo(AwaitingConfirmation)
                 );
 
@@ -96,7 +119,14 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed()) context.TransitionToState(AwaitingPayment);
+                        if (order.isConfirmed())
+                        {
+                            context.Publish<AccountingInvoicePublish>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            context.TransitionToState(AwaitingPayment);
+                        }
                     }
                 }),
                 When(WarehouseConfirmationAcceptEvent)
@@ -114,7 +144,14 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed()) context.TransitionToState(AwaitingPayment);
+                        if (order.isConfirmed())
+                        {
+                            context.Publish<AccountingInvoicePublish>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            context.TransitionToState(AwaitingPayment);
+                        }
                     }
                 }),
                 When(SalesConfirmationAcceptEvent)
@@ -132,7 +169,14 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed()) context.TransitionToState(AwaitingPayment);
+                        if (order.isConfirmed())
+                        {
+                            context.Publish<AccountingInvoicePublish>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            context.TransitionToState(AwaitingPayment);
+                        }
                     }
                 }),
                 When(MarketingConfirmationAcceptEvent)
@@ -150,14 +194,21 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed()) context.TransitionToState(AwaitingPayment);
+                        if (order.isConfirmed())
+                        {
+                            context.Publish<AccountingInvoicePublish>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            context.TransitionToState(AwaitingPayment);
+                        }
                     }
                 }),
                 When(ShippingConfirmationAcceptEvent)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
-                            $"received marketing confirmation.");
+                            $"received shipping confirmation.");
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -168,7 +219,14 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed()) context.TransitionToState(AwaitingPayment);
+                        if (order.isConfirmed())
+                        {
+                            context.Publish<AccountingInvoicePublish>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            context.TransitionToState(AwaitingPayment);
+                        }
                     }
                 }),
 
@@ -188,13 +246,173 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
                     }
+
+                    context.Publish<AccountingInvoiceCancel>(new
+                    {
+                        CorrelationId = context.Message.CorrelationId
+                    });
+                })
+                .Finalize(),
+                When(WarehouseConfirmationRefuseEvent)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"canceled by warehouse.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (orders != null)
+                    {
+                        order.IsConfirmedByWarehouse = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+
+                    context.Publish<AccountingInvoiceCancel>(new
+                    {
+                        CorrelationId = context.Message.CorrelationId
+                    });
+                })
+                .Finalize(),
+                When(SalesConfirmationRefuseEvent)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"canceled by sales.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (orders != null)
+                    {
+                        order.IsConfirmedBySales = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+
+                    context.Publish<AccountingInvoiceCancel>(new
+                    {
+                        CorrelationId = context.Message.CorrelationId
+                    });
+                })
+                .Finalize(),
+                When(MarketingConfirmationRefuseEvent)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"canceled by marketing.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (orders != null)
+                    {
+                        order.IsConfirmedByMarketing = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+
+                    context.Publish<AccountingInvoiceCancel>(new
+                    {
+                        CorrelationId = context.Message.CorrelationId
+                    });
+                })
+                .Finalize(),
+                When(ShippingConfirmationRefuseEvent)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"canceled by shipping.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (orders != null)
+                    {
+                        order.IsConfirmedByShipping = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+
+                    context.Publish<AccountingInvoiceCancel>(new
+                    {
+                        CorrelationId = context.Message.CorrelationId
+                    });
                 })
                 .Finalize()
                 );
 
-            //During(AwaitingPayment,
+            During(AwaitingPayment,
+                When(AccountingInvoicePaidEvent)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"has been paid by client.");
 
-            //    );
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (orders != null)
+                    {
+                        order.IsPaid = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+
+                    context.Publish<ShippingShipmentStart>(new
+                    {
+                        CorrelationId = context.Message.CorrelationId,
+                        DeliveryMethod = context.Saga.DeliveryMethod,
+                        DeliveryPrice = context.Saga.DeliveryPrice,
+                        BookQuantity = context.Saga.BookQuantity
+                    });
+                })
+                .TransitionTo(AwaitingShipment)
+                );
+
+            During(AwaitingShipment,
+                When(ShippingShipmentSentEvent)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"has been shipped to client.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (orders != null)
+                    {
+                        order.IsShipped = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+                })
+                .Finalize(),
+
+                When(ShippingShipmentNotSentEvent)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"could not be shipped to client.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (orders != null)
+                    {
+                        order.IsShipped = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+                })
+                .Finalize()
+                );
         }
 
         public void Dispose()

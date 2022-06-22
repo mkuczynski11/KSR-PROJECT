@@ -78,6 +78,7 @@ namespace Common
     {
         string DeliveryMethod { get; set; }
         double DeliveryPrice { get; set; }
+        int BookQuantity { get; set; }
     }
     public interface ShippingShipmentSent : CorrelatedBy<Guid> { }
     public interface ShippingShipmentNotSent : CorrelatedBy<Guid> { }
