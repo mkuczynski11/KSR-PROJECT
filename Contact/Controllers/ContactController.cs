@@ -52,13 +52,8 @@ namespace Contact.Controllers
         [HttpPost("orders/{id}/confirm")]
         public ActionResult ConfirmOrder(string id)
         {
-            Console.WriteLine($"Order with ID:{id} confirmed");
             Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
             if (order == null) return NotFound();
-
-            order.IsConfirmedByClient = true;
-            _orderContext.OrderItems.Update(order);
-            _orderContext.SaveChanges();
 
             _publishEndpoint.Publish<ClientConfirmationAccept>(new
             {
@@ -71,13 +66,8 @@ namespace Contact.Controllers
         [HttpPost("orders/{id}/cancel")]
         public ActionResult CancelOrder(string id)
         {
-            Console.WriteLine($"Order with ID:{id} canceled");
             Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
             if (order == null) return NotFound();
-
-            order.IsConfirmedByClient = false;
-            _orderContext.OrderItems.Update(order);
-            _orderContext.SaveChanges();
 
             _publishEndpoint.Publish<ClientConfirmationRefuse>(new
             {

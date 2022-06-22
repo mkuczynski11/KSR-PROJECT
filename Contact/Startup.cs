@@ -31,7 +31,13 @@ namespace Contact
 
             services.AddMassTransit(x =>
             {
-                x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
+                x.AddSagaStateMachine<OrderSaga, OrderSagaData>()
+                    .InMemoryRepository()
+                    .Endpoint(e =>
+                    {
+                        e.Name = rabbitConfiguration.ReceiveEndpoint;
+                    });
+                x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
                     {
@@ -40,9 +46,21 @@ namespace Contact
                     });
                     cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
                     {
-                        ep.StateMachineSaga(new OrderSaga(), new InMemorySagaRepository<OrderSagaData>());
+                        ep.ConfigureSaga<OrderSagaData>(context);
                     });
-                }));
+                });
+                //x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
+                //{
+                //    cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
+                //    {
+                //        hostConfigurator.Username(rabbitConfiguration.Username);
+                //        hostConfigurator.Password(rabbitConfiguration.Password);
+                //    });
+                //    //cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
+                //    //{
+                //    //    ep.StateMachineSaga(new OrderSaga(), new InMemorySagaRepository<OrderSagaData>());
+                //    //});
+                //}));
             });
 
             services.AddDbContext<OrderContext>(opt => opt.UseInMemoryDatabase("ContactOrderList"));
