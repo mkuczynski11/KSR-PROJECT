@@ -1,17 +1,20 @@
-﻿using MassTransit;
+using MassTransit;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MassTransit;
 
 namespace Common
 {
+    // Message for Sales with information about new book
     public interface NewBookSalesInfo
     {
         string ID { get; set; }
         int price { get; set; }
     }
+    // Message for Marketing with information about new book
     public interface NewBookMarketingInfo
     {
         string ID { get; set; }
@@ -32,6 +35,7 @@ namespace Common
     public interface OrderCancel : CorrelatedBy<Guid> { }
     public interface ClientConfirmationAccept : CorrelatedBy<Guid> { }
     public interface ClientConfirmationRefuse : CorrelatedBy<Guid> { }
+    // Message for Warehouse to check if there is requested amount of books
     public interface WarehouseConfirmation : CorrelatedBy<Guid>
     {
         string BookID { get; set; }
@@ -77,6 +81,7 @@ namespace Common
     public interface AccountingInvoiceNotPaid : CorrelatedBy<Guid> { }
     public interface ShippingShipmentStart : CorrelatedBy<Guid>
     {
+        string BookID { get; set; }
         string DeliveryMethod { get; set; }
         double DeliveryPrice { get; set; }
         int BookQuantity { get; set; }
@@ -84,4 +89,18 @@ namespace Common
     public interface ShippingShipmentSent : CorrelatedBy<Guid> { }
     public interface ShippingShipmentNotSent : CorrelatedBy<Guid> { }
     /* ORDER SAGA SECTION END*/
+    // Message for Warehouse with request for specified amount of specified book to be send to customer
+    public interface WarehouseDeliveryStart : CorrelatedBy<Guid>
+    {
+        string BookID { get; set; }
+        int BookQuantity { get; set; }
+    }
+    // Message for Shipping with confirmation of the delivery
+    public interface WarehouseDeliveryStartConfirmation : CorrelatedBy<Guid>
+    {
+    }
+    // Message for Shipping with rejection of the delivery
+    public interface WarehouseDeliveryStartRejection : CorrelatedBy<Guid>
+    {
+    }
 }

@@ -66,5 +66,46 @@ namespace Warehouse.Controllers
 
             return Ok();
         }
+        //TODO: remove since it is here for testing purposes
+        [HttpPost("testSaga/test")]
+        public async Task<IActionResult> TestSaga()
+        {
+            Console.WriteLine("testing saga");
+            Book book = new Book("asd", "name", 1);
+            _bookContext.BookItems.Add(book);
+            _bookContext.SaveChanges();
+            await _publishEndpoint.Publish<ShippingShipmentStart>(new
+            {
+                BookID = "asd",
+                BookQuantity = 1,
+                DeliveryMethod = "DPD",
+                DeliveryPrice = 10
+            });
+
+            return Ok();
+        }
+        //TODO: remove since it is here for testing purposes
+        [HttpPost("test/checkTest")]
+        public async Task<IActionResult> CheckTest()
+        {
+            Console.WriteLine("testing check messages");
+            Book book = new Book("asd", "name", 13);
+            _bookContext.BookItems.Add(book);
+            _bookContext.SaveChanges();
+            await _publishEndpoint.Publish<WarehouseConfirmation>(new
+            {
+                BookID = "asd",
+                BookQuantity = 8,
+                BookName = "name"
+            });
+
+            await _publishEndpoint.Publish<ShippingConfirmation>(new
+            {
+                DeliveryPrice = 10.0,
+                DeliveryMethod = "DPD"
+            });
+
+            return Ok();
+        }
     }
 }
