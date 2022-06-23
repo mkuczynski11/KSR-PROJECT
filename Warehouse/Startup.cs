@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
 using Warehouse.Configuration;
+using System;
+
 using MassTransit;
+using Warehouse.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Warehouse
 {
@@ -32,22 +35,10 @@ namespace Warehouse
                         hostConfigurator.Username(rabbitConfiguration.Username);
                         hostConfigurator.Password(rabbitConfiguration.Password);
                     });
-
-                    // TODO: Recieve messages from rabbit bus
-                    //cfg.ReceiveEndpoint("warehouse-webapi", ep =>
-                    //{
-                    //    ep.PrefetchCount = 16;
-                    //    ep.UseMessageRetry(r => r.Interval(2, 100));
-                    //});
                 }));
             });
 
-            // TODO: Weird Singletons
-            //services.AddSingleton<IPublishEndpoint>(provider => provider.GetRequiredService<IBusControl>());
-            //services.AddSingleton<IBus>(provider => provider.GetRequiredService<IBusControl>());
-
-            //services.AddSingleton<IHostedService, BusService>();
-
+            services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("WarehouseBookList"));
             services.AddControllers();
         }
 
