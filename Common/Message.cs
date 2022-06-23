@@ -12,13 +12,13 @@ namespace Common
     public interface NewBookSalesInfo
     {
         string ID { get; set; }
-        int price { get; set; }
+        double price { get; set; }
     }
     // Message for Marketing with information about new book
     public interface NewBookMarketingInfo
     {
         string ID { get; set; }
-        int discount { get; set; }
+        double discount { get; set; }
     }
 
     /* ORDER SAGA SECTION */

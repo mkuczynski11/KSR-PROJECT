@@ -8,11 +8,11 @@ namespace Marketing.Models
     public class Book
     {
         public string ID { get; set; }
-        public int discount { get; set; }
+        public double discount { get; set; }
 
         public Book() { }
 
-        public Book(string iD, int discount)
+        public Book(string iD, double discount)
         {
             this.ID = iD;
             this.discount = discount;

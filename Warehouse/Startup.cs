@@ -104,12 +104,12 @@ namespace Warehouse
                     Console.WriteLine($"Book={bookID} can successfully deliver {bookQuantity} amount of it.");
                     book.quantity -= bookQuantity;
                     _bookContext.SaveChanges();
-                    await _publishEndpoint.Publish<WarehouseDeliveryStartConfirmation>(new { });
+                    await _publishEndpoint.Publish<WarehouseDeliveryStartConfirmation>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
                     Console.WriteLine($"Book={bookID} is not in warehouse or cannot deliver {bookQuantity} amount of it.");
-                    await _publishEndpoint.Publish<WarehouseDeliveryStartRejection>(new { });
+                    await _publishEndpoint.Publish<WarehouseDeliveryStartRejection>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
         }
@@ -137,12 +137,12 @@ namespace Warehouse
                 if (valid)
                 {
                     Console.WriteLine($"There is {bookQuantity} amount of book={bookID}. Order can be made");
-                    await _publishEndpoint.Publish<WarehouseConfirmationAccept>(new { });
+                    await _publishEndpoint.Publish<WarehouseConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
                     Console.WriteLine($"Missing {bookQuantity} amount of book={bookID}. Current amount={book.quantity}");
-                    await _publishEndpoint.Publish<WarehouseConfirmationRefuse>(new { });
+                    await _publishEndpoint.Publish<WarehouseConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
         }

@@ -10,6 +10,7 @@ using Common;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Sales.Models;
+using System.Linq;
 
 namespace Sales
 {
@@ -48,6 +49,7 @@ namespace Sales
             services.AddMassTransit(x =>
             {
                 x.AddConsumer<NewBookSalesInfoConsumer>();
+                x.AddConsumer<SalesConfirmationConsumer>();
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), settings =>
@@ -59,6 +61,11 @@ namespace Sales
                     cfg.ReceiveEndpoint("sales-book-creation-event", ep =>
                     {
                         ep.ConfigureConsumer<NewBookSalesInfoConsumer>(context);
+                    });
+
+                    cfg.ReceiveEndpoint("sales-book-confirmation-event", ep =>
+                    {
+                        ep.ConfigureConsumer<SalesConfirmationConsumer>(context);
                     });
                 });
             });
@@ -83,6 +90,34 @@ namespace Sales
             {
                 endpoints.MapControllers();
             });
+        }
+
+        class SalesConfirmationConsumer : IConsumer<SalesConfirmation>
+        {
+            private BookContext _bookContext;
+            public readonly IPublishEndpoint _publishEndpoint;
+            public SalesConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            {
+                _publishEndpoint = publishEndpoint;
+                _bookContext = bookContext;
+            }
+            public async Task Consume(ConsumeContext<SalesConfirmation> context)
+            {
+                double bookPrice = context.Message.BookPrice;
+
+                Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(context.Message.BookID));
+
+                if (bookPrice == book.price)
+                {
+                    Console.WriteLine($"Price information is valid.");
+                    await _publishEndpoint.Publish<SalesConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
+                }
+                else
+                {
+                    Console.WriteLine($"Price information is invalid.");
+                    await _publishEndpoint.Publish<SalesConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
+                }
+            }
         }
     }
 }

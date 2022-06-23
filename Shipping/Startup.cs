@@ -114,7 +114,7 @@ namespace Shipping
                     .Then(context => {
                         Console.WriteLine($"Got shipping request for book={context.Message.BookID}, quantity={context.Message.BookQuantity}, price={context.Message.DeliveryPrice}, method={context.Message.DeliveryMethod}");
                     })
-                    .PublishAsync(context => context.Init<WarehouseDeliveryStart>(new { BookID = context.Message.BookID, BookQuantity = context.Message.BookQuantity}))
+                    .PublishAsync(context => context.Init<WarehouseDeliveryStart>(new { CorrelationId = context.Message.CorrelationId, BookID = context.Message.BookID, BookQuantity = context.Message.BookQuantity}))
                     .TransitionTo(RequestSend)
                     );
 
@@ -123,13 +123,13 @@ namespace Shipping
                     .Then(context => {
                         Console.WriteLine($"Warehouse confirmed that this book is available");
                     })
-                    .PublishAsync(context => context.Init<ShippingShipmentSent>(new { }))
+                    .PublishAsync(context => context.Init<ShippingShipmentSent>(new { CorrelationId = context.Message.CorrelationId }))
                     .Finalize(),
                     When(WarehouseDeliveryRejectionEvent)
                     .Then(context => {
                         Console.WriteLine($"Warehouse denied that this book is available");
                     })
-                    .PublishAsync(context => context.Init<ShippingShipmentNotSent>(new { }))
+                    .PublishAsync(context => context.Init<ShippingShipmentNotSent>(new { CorrelationId = context.Message.CorrelationId }))
                     .Finalize()
                     );
                 SetCompletedWhenFinalized();
@@ -164,12 +164,12 @@ namespace Shipping
                 if (price != null && method != null)
                 {
                     Console.WriteLine($"Delivery information is valid.");
-                    await _publishEndpoint.Publish<ShippingConfirmationAccept>(new { });
+                    await _publishEndpoint.Publish<ShippingConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
                     Console.WriteLine($"Delivery information is invalid.");
-                    await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { });
+                    await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
         }

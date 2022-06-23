@@ -8,11 +8,11 @@ namespace Sales.Models
     public class Book
     {
         public string ID { get; set; }
-        public int price { get; set; }
+        public double price { get; set; }
 
         public Book() { }
 
-        public Book(string iD, int price)
+        public Book(string iD, double price)
         {
             this.ID = iD;
             this.price = price;

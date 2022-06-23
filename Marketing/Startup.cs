@@ -10,6 +10,7 @@ using Common;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Marketing.Models;
+using System.Linq;
 
 namespace Marketing
 {
@@ -48,6 +49,7 @@ namespace Marketing
             services.AddMassTransit(x =>
             {
                 x.AddConsumer<NewBookMarketingInfoConsumer>();
+                x.AddConsumer<MarketingConfirmationConsumer>();
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), settings =>
@@ -59,6 +61,11 @@ namespace Marketing
                     cfg.ReceiveEndpoint("marketing-book-creation-event", ep =>
                     {
                         ep.ConfigureConsumer<NewBookMarketingInfoConsumer>(context);
+                    });
+
+                    cfg.ReceiveEndpoint("marketing-book-confirmation-event", ep =>
+                    {
+                        ep.ConfigureConsumer<MarketingConfirmationConsumer>(context);
                     });
                 });
             });
@@ -83,6 +90,34 @@ namespace Marketing
             {
                 endpoints.MapControllers();
             });
+        }
+
+        class MarketingConfirmationConsumer : IConsumer<MarketingConfirmation>
+        {
+            private BookContext _bookContext;
+            public readonly IPublishEndpoint _publishEndpoint;
+            public MarketingConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            {
+                _publishEndpoint = publishEndpoint;
+                _bookContext = bookContext;
+            }
+            public async Task Consume(ConsumeContext<MarketingConfirmation> context)
+            {
+                double bookDiscount = context.Message.BookDiscount;
+
+                Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(context.Message.BookID));
+
+                if (bookDiscount == book.discount)
+                {
+                    Console.WriteLine($"Discount information is valid.");
+                    await _publishEndpoint.Publish<MarketingConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
+                }
+                else
+                {
+                    Console.WriteLine($"Discount information is invalid.");
+                    await _publishEndpoint.Publish<MarketingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
+                }
+            }
         }
     }
 }
