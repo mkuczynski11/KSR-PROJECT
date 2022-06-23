@@ -32,9 +32,9 @@ namespace Warehouse
             services.AddMassTransit(x =>
             {
                 x.AddConsumer<WarehouseDeliveryRequestConsumer>();
-                x.AddConsumer<BookQuantityCheckConsumer>();
+                x.AddConsumer<WarehouseConfirmationConsumer>();
                 //TODO: remove conumser
-                x.AddConsumer<ShippingConfirmedConsumer>();
+                x.AddConsumer<ShippingShipmentSentConsumer>();
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), settings =>
@@ -49,12 +49,12 @@ namespace Warehouse
                     });
                     cfg.ReceiveEndpoint("warehouse-quantity-confirmation-request-event", ep =>
                     {
-                        ep.ConfigureConsumer<BookQuantityCheckConsumer>(context);
+                        ep.ConfigureConsumer<WarehouseConfirmationConsumer>(context);
                     });
                     //TODO: remove consumer
                     cfg.ReceiveEndpoint("test-test-test", ep =>
                     {
-                        ep.ConfigureConsumer<ShippingConfirmedConsumer>(context);
+                        ep.ConfigureConsumer<ShippingShipmentSentConsumer>(context);
                     });
                 });
             });
@@ -80,7 +80,7 @@ namespace Warehouse
                 endpoints.MapControllers();
             });
         }
-        class WarehouseDeliveryRequestConsumer : IConsumer<WarehouseDeliveryRequest>
+        class WarehouseDeliveryRequestConsumer : IConsumer<WarehouseDeliveryStart>
         {
             private BookContext _bookContext;
             public readonly IPublishEndpoint _publishEndpoint;
@@ -89,10 +89,10 @@ namespace Warehouse
                 _publishEndpoint = publishEndpoint;
                 _bookContext = bookContext;
             }
-            public async Task Consume(ConsumeContext<WarehouseDeliveryRequest> context)
+            public async Task Consume(ConsumeContext<WarehouseDeliveryStart> context)
             {
-                var bookID = context.Message.ID;
-                var bookQuantity = context.Message.quantity;
+                var bookID = context.Message.BookID;
+                var bookQuantity = context.Message.BookQuantity;
 
                 Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(bookID));
                 bool valid = true;
@@ -104,57 +104,59 @@ namespace Warehouse
                     Console.WriteLine($"Book={bookID} can successfully deliver {bookQuantity} amount of it.");
                     book.quantity -= bookQuantity;
                     _bookContext.SaveChanges();
-                    await _publishEndpoint.Publish<WarehouseDeliveryConfirmation>(new { });
+                    await _publishEndpoint.Publish<WarehouseDeliveryStartConfirmation>(new { });
                 }
                 else
                 {
                     Console.WriteLine($"Book={bookID} is not in warehouse or cannot deliver {bookQuantity} amount of it.");
-                    await _publishEndpoint.Publish<WarehouseDeliveryRejection>(new { });
+                    await _publishEndpoint.Publish<WarehouseDeliveryStartRejection>(new { });
                 }
             }
         }
-        class BookQuantityCheckConsumer : IConsumer<BookQuantityCheck>
+        class WarehouseConfirmationConsumer : IConsumer<WarehouseConfirmation>
         {
             private BookContext _bookContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public BookQuantityCheckConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            public WarehouseConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
             {
                 _publishEndpoint = publishEndpoint;
                 _bookContext = bookContext;
             }
-            public async Task Consume(ConsumeContext<BookQuantityCheck> context)
+            public async Task Consume(ConsumeContext<WarehouseConfirmation> context)
             {
-                var bookID = context.Message.ID;
-                var bookQuantity = context.Message.quantity;
+                var bookID = context.Message.BookID;
+                var bookQuantity = context.Message.BookQuantity;
+                var bookName = context.Message.BookName;
 
                 Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(bookID));
                 bool valid = true;
                 if (book == null) valid = false;
                 else if (book.quantity < bookQuantity) valid = false;
+                else if (!book.name.Equals(bookName)) valid = false;
 
                 if (valid)
                 {
                     Console.WriteLine($"There is {bookQuantity} amount of book={bookID}. Order can be made");
-                    await _publishEndpoint.Publish<BookQuantityConfirmation>(new { });
+                    await _publishEndpoint.Publish<WarehouseConfirmationAccept>(new { });
                 }
                 else
                 {
                     Console.WriteLine($"Missing {bookQuantity} amount of book={bookID}. Current amount={book.quantity}");
-                    await _publishEndpoint.Publish<BookQuantityRejection>(new { });
+                    await _publishEndpoint.Publish<WarehouseConfirmationRefuse>(new { });
                 }
             }
         }
-        class ShippingConfirmedConsumer : IConsumer<ShippingConfirmed>
+        class ShippingShipmentSentConsumer : IConsumer<ShippingShipmentSent>
         {
             private BookContext _bookContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public ShippingConfirmedConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            public ShippingShipmentSentConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
             {
                 _publishEndpoint = publishEndpoint;
                 _bookContext = bookContext;
             }
             //TODO: remove since it is here for testing purposes
-            public async Task Consume(ConsumeContext<ShippingConfirmed> context)
+            public async Task Consume(ConsumeContext<ShippingShipmentSent> context)
             {
                 Console.WriteLine($"LESSS GOOOO");
             }

@@ -33,7 +33,7 @@ namespace Shipping
 
             services.AddMassTransit(x =>
             {
-                x.AddConsumer<DeliveryCheckConsumer>();
+                x.AddConsumer<ShippingConfirmationConsumer>();
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), settings =>
@@ -49,7 +49,7 @@ namespace Shipping
 
                     cfg.ReceiveEndpoint("shipping-delivery-confirmation-request-event", ep =>
                     {
-                        ep.ConfigureConsumer<DeliveryCheckConsumer>(context);
+                        ep.ConfigureConsumer<ShippingConfirmationConsumer>(context);
                     });
 
                 });
@@ -102,19 +102,19 @@ namespace Shipping
             public State ReadyToDeliver { get; private set; }
             public State WillNotDeliver { get; private set; }
 
-            public Event<ShippingRequest> ShippingRequestEvent { get; private set; }
-            public Event<WarehouseDeliveryConfirmation> WarehouseDeliveryConfirmationEvent { get; private set; }
-            public Event<WarehouseDeliveryRejection> WarehouseDeliveryRejectionEvent { get; private set; }
+            public Event<ShippingShipmentStart> ShippingShipmentStartEvent { get; private set; }
+            public Event<WarehouseDeliveryStartConfirmation> WarehouseDeliveryConfirmationEvent { get; private set; }
+            public Event<WarehouseDeliveryStartRejection> WarehouseDeliveryRejectionEvent { get; private set; }
             public DeliveryStateMachine()
             {
                 InstanceState(x => x.CurrentState);
 
                 Initially(
-                    When(ShippingRequestEvent)
+                    When(ShippingShipmentStartEvent)
                     .Then(context => {
-                        Console.WriteLine($"Got shipping request for book={context.Message.ID}, quantity={context.Message.quantity}");
+                        Console.WriteLine($"Got shipping request for book={context.Message.BookID}, quantity={context.Message.BookQuantity}, price={context.Message.DeliveryPrice}, method={context.Message.DeliveryMethod}");
                     })
-                    .PublishAsync(context => context.Init<WarehouseDeliveryRequest>(new { ID = context.Message.ID, quantity = context.Message.quantity}))
+                    .PublishAsync(context => context.Init<WarehouseDeliveryStart>(new { BookID = context.Message.BookID, BookQuantity = context.Message.BookQuantity}))
                     .TransitionTo(RequestSend)
                     );
 
@@ -123,13 +123,13 @@ namespace Shipping
                     .Then(context => {
                         Console.WriteLine($"Warehouse confirmed that this book is available");
                     })
-                    .PublishAsync(context => context.Init<ShippingConfirmed>(new { }))
+                    .PublishAsync(context => context.Init<ShippingShipmentSent>(new { }))
                     .Finalize(),
                     When(WarehouseDeliveryRejectionEvent)
                     .Then(context => {
                         Console.WriteLine($"Warehouse denied that this book is available");
                     })
-                    .PublishAsync(context => context.Init<ShippingRejected>(new { }))
+                    .PublishAsync(context => context.Init<ShippingShipmentNotSent>(new { }))
                     .Finalize()
                     );
                 SetCompletedWhenFinalized();
@@ -144,19 +144,19 @@ namespace Shipping
             public int bookQuantity { get; set; }
         }
 
-        class DeliveryCheckConsumer : IConsumer<DeliveryCheck>
+        class ShippingConfirmationConsumer : IConsumer<ShippingConfirmation>
         {
             private ShippingContext _shippingContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public DeliveryCheckConsumer(ShippingContext shippingContext, IPublishEndpoint publishEndpoint)
+            public ShippingConfirmationConsumer(ShippingContext shippingContext, IPublishEndpoint publishEndpoint)
             {
                 _publishEndpoint = publishEndpoint;
                 _shippingContext = shippingContext;
             }
-            public async Task Consume(ConsumeContext<DeliveryCheck> context)
+            public async Task Consume(ConsumeContext<ShippingConfirmation> context)
             {
-                var deliveryPrice = context.Message.price;
-                var deliveryMethod = context.Message.method;
+                var deliveryPrice = context.Message.DeliveryPrice;
+                var deliveryMethod = context.Message.DeliveryMethod;
 
                 Price price = _shippingContext.PriceItems.SingleOrDefault(b => b.price.Equals(deliveryPrice));
                 Method method = _shippingContext.MethodItems.SingleOrDefault(b => b.method.Equals(deliveryMethod));
@@ -164,12 +164,12 @@ namespace Shipping
                 if (price != null && method != null)
                 {
                     Console.WriteLine($"Delivery information is valid.");
-                    await _publishEndpoint.Publish<BookQuantityConfirmation>(new { });
+                    await _publishEndpoint.Publish<ShippingConfirmationAccept>(new { });
                 }
                 else
                 {
                     Console.WriteLine($"Delivery information is invalid.");
-                    await _publishEndpoint.Publish<BookQuantityRejection>(new { });
+                    await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { });
                 }
             }
         }

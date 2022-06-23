@@ -74,10 +74,12 @@ namespace Warehouse.Controllers
             Book book = new Book("asd", "name", 1);
             _bookContext.BookItems.Add(book);
             _bookContext.SaveChanges();
-            await _publishEndpoint.Publish<ShippingRequest>(new
+            await _publishEndpoint.Publish<ShippingShipmentStart>(new
             {
-                ID = "asd",
-                quantity = 1
+                BookID = "asd",
+                BookQuantity = 1,
+                DeliveryMethod = "DPD",
+                DeliveryPrice = 10
             });
 
             return Ok();
@@ -90,16 +92,17 @@ namespace Warehouse.Controllers
             Book book = new Book("asd", "name", 13);
             _bookContext.BookItems.Add(book);
             _bookContext.SaveChanges();
-            await _publishEndpoint.Publish<BookQuantityCheck>(new
+            await _publishEndpoint.Publish<WarehouseConfirmation>(new
             {
-                ID = "asd",
-                quantity = 8
+                BookID = "asd",
+                BookQuantity = 8,
+                BookName = "name"
             });
 
-            await _publishEndpoint.Publish<DeliveryCheck>(new
+            await _publishEndpoint.Publish<ShippingConfirmation>(new
             {
-                price = 10.0,
-                method = "DPD"
+                DeliveryPrice = 10.0,
+                DeliveryMethod = "DPD"
             });
 
             return Ok();
