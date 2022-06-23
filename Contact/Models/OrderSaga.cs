@@ -15,6 +15,7 @@ namespace Contact.Models
         public string CurrentState { get; set; }
         public string DeliveryMethod { get; set; }
         public double DeliveryPrice { get; set; }
+        public string BookID { get; set; }
         public int BookQuantity { get; set; }
     }
 
@@ -62,6 +63,7 @@ namespace Contact.Models
                     context.Saga.DeliveryMethod = context.Message.DeliveryMethod;
                     context.Saga.DeliveryPrice = context.Message.DeliveryPrice;
                     context.Saga.BookQuantity = context.Message.BookQuantity;
+                    context.Saga.BookID = context.Message.BookID;
                 })
                 .PublishAsync(context => context.Init<WarehouseConfirmation>(new
                 {
@@ -370,6 +372,7 @@ namespace Contact.Models
                         CorrelationId = context.Message.CorrelationId,
                         DeliveryMethod = context.Saga.DeliveryMethod,
                         DeliveryPrice = context.Saga.DeliveryPrice,
+                        BookID = context.Saga.BookID,
                         BookQuantity = context.Saga.BookQuantity
                     });
                 })
