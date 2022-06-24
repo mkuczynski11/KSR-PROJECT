@@ -28,11 +28,15 @@ namespace Shipping
         public void ConfigureServices(IServiceCollection services)
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
-            var repo = new InMemorySagaRepository<DeliveryState>();
-            var machine = new DeliveryStateMachine();
 
             services.AddMassTransit(x =>
             {
+                x.AddSagaStateMachine<DeliveryStateMachine, DeliveryState>()
+                    .InMemoryRepository()
+                    .Endpoint(e =>
+                    {
+                        e.Name = "shipping-saga-queue";
+                    });
                 x.AddConsumer<ShippingConfirmationConsumer>();
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -44,7 +48,7 @@ namespace Shipping
 
                     cfg.ReceiveEndpoint("shipping-saga-queue", ep =>
                     {
-                        ep.StateMachineSaga(machine, repo);
+                        ep.ConfigureSaga<DeliveryState>(context);
                     });
 
                     cfg.ReceiveEndpoint("shipping-delivery-confirmation-request-event", ep =>
@@ -96,8 +100,10 @@ namespace Shipping
             context.SaveChanges();
         }
 
-        public class DeliveryStateMachine : MassTransitStateMachine<DeliveryState> 
+        public class DeliveryStateMachine : MassTransitStateMachine<DeliveryState>, IDisposable
         {
+            private readonly IServiceScope _scope;
+
             public State RequestSend { get; private set; }
             public State ReadyToDeliver { get; private set; }
             public State WillNotDeliver { get; private set; }
@@ -105,14 +111,26 @@ namespace Shipping
             public Event<ShippingShipmentStart> ShippingShipmentStartEvent { get; private set; }
             public Event<WarehouseDeliveryStartConfirmation> WarehouseDeliveryConfirmationEvent { get; private set; }
             public Event<WarehouseDeliveryStartRejection> WarehouseDeliveryRejectionEvent { get; private set; }
-            public DeliveryStateMachine()
+
+            public DeliveryStateMachine(IServiceProvider services)
             {
+                _scope = services.CreateScope();
+
                 InstanceState(x => x.CurrentState);
 
                 Initially(
                     When(ShippingShipmentStartEvent)
                     .Then(context => {
                         Console.WriteLine($"Got shipping request for book={context.Message.BookID}, quantity={context.Message.BookQuantity}, price={context.Message.DeliveryPrice}, method={context.Message.DeliveryMethod}");
+                        Shipment shipment = new Shipment(context.Message.CorrelationId.ToString(), false, context.Message.BookID, context.Message.BookQuantity);
+                        var shipments = _scope.ServiceProvider.GetRequiredService<ShippingContext>();
+                        shipments.Add(shipment);
+                        shipments.SaveChanges();
+
+                        context.Saga.BookID = context.Message.BookID;
+                        context.Saga.BookQuantity = context.Message.BookQuantity;
+                        context.Saga.CorrelationId = context.Message.CorrelationId;
+
                     })
                     .PublishAsync(context => context.Init<WarehouseDeliveryStart>(new { CorrelationId = context.Message.CorrelationId, BookID = context.Message.BookID, BookQuantity = context.Message.BookQuantity}))
                     .TransitionTo(RequestSend)
@@ -121,6 +139,13 @@ namespace Shipping
                 During(RequestSend,
                     When(WarehouseDeliveryConfirmationEvent)
                     .Then(context => {
+                        var shipments = _scope.ServiceProvider.GetRequiredService<ShippingContext>();
+                        Shipment shipment = shipments.ShipmentItems.SingleOrDefault(s => s.ID.Equals(context.Message.CorrelationId.ToString()));
+                        if (shipment != null)
+                        {
+                            shipment.IsConfirmedByWarehouse = true;
+                            shipments.SaveChanges();
+                        }
                         Console.WriteLine($"Warehouse confirmed that this book is available");
                     })
                     .PublishAsync(context => context.Init<ShippingShipmentSent>(new { CorrelationId = context.Message.CorrelationId }))
@@ -134,14 +159,19 @@ namespace Shipping
                     );
                 SetCompletedWhenFinalized();
             }
+
+            public void Dispose()
+            {
+                _scope?.Dispose();
+            }
         }
 
         public class DeliveryState : SagaStateMachineInstance
         {
             public Guid CorrelationId { get; set; }
             public string CurrentState { get; set; }
-            public string bookID { get; set; }
-            public int bookQuantity { get; set; }
+            public string BookID { get; set; }
+            public int BookQuantity { get; set; }
         }
 
         class ShippingConfirmationConsumer : IConsumer<ShippingConfirmation>
@@ -158,8 +188,8 @@ namespace Shipping
                 var deliveryPrice = context.Message.DeliveryPrice;
                 var deliveryMethod = context.Message.DeliveryMethod;
 
-                Price price = _shippingContext.PriceItems.SingleOrDefault(b => b.price.Equals(deliveryPrice));
-                Method method = _shippingContext.MethodItems.SingleOrDefault(b => b.method.Equals(deliveryMethod));
+                Price price = _shippingContext.PriceItems.SingleOrDefault(b => b.PriceValue.Equals(deliveryPrice));
+                Method method = _shippingContext.MethodItems.SingleOrDefault(b => b.MethodValue.Equals(deliveryMethod));
 
                 if (price != null && method != null)
                 {

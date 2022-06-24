@@ -9,13 +9,13 @@ namespace Shipping.Models
     public class Method
     {
         [Key]
-        public string method { get; set; }
+        public string MethodValue { get; set; }
 
         public Method() { }
         
         public Method(string method)
         {
-            this.method = method;
+            this.MethodValue = method;
         }
     }
 }
