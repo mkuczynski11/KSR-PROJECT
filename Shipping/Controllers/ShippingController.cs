@@ -38,19 +38,18 @@ namespace Shipping.Controllers
         {
             return _shippingContext.ShipmentItems;
         }
-        //[HttpPut("price")]
-        //public ActionResult<Price> PutPrice([FromBody] PriceRequest request)
-        //{
-        //    //TODO: none of what i tried works
-        //    IEnumerable<Price> price = _shippingContext.PriceItems.TakeLast(1);
+        [HttpPut("price")]
+        public ActionResult<Price> PutPrice([FromBody] PriceRequest request)
+        {
+            Price price = _shippingContext.PriceItems.SingleOrDefault(p => p.ID.Equals("base"));
 
-        //    if (price == null) return NotFound();
+            if (price == null) return NotFound();
 
-        //    price.PriceValue = request.Price;
-        //    _shippingContext.SaveChanges();
+            price.PriceValue = request.Price;
+            _shippingContext.SaveChanges();
 
-        //    return price;
-        //}
+            return price;
+        }
         [HttpPost("methods")]
         public ActionResult<Method> PutMethod([FromBody] MethodRequest request)
         {

@@ -85,7 +85,7 @@ namespace Shipping
 
         private static void AddShippingData(ShippingContext context)
         {
-            var price = new Price(10.0);
+            var price = new Price("base", 10.0);
             context.PriceItems.Add(price);
 
             var dpdMethod = new Method("DPD");
