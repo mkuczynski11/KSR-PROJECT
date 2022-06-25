@@ -25,7 +25,7 @@ namespace Sales.Controllers
             return _bookContext.BookItems;
         }
         [HttpPut]
-        public ActionResult<Book> PutBook([FromBody] BookRequest request)
+        public ActionResult<Book> PutBook([FromBody] BookUpdateRequest request)
         {
             Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(request.BookID));
 
