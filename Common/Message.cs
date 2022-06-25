@@ -35,7 +35,6 @@ namespace Common
     public interface OrderCancel : CorrelatedBy<Guid> { }
     public interface ClientConfirmationAccept : CorrelatedBy<Guid> { }
     public interface ClientConfirmationRefuse : CorrelatedBy<Guid> { }
-    // Message for Warehouse to check if there is requested amount of books
     public interface WarehouseConfirmation : CorrelatedBy<Guid>
     {
         string BookID { get; set; }
@@ -89,6 +88,7 @@ namespace Common
     public interface ShippingShipmentSent : CorrelatedBy<Guid> { }
     public interface ShippingShipmentNotSent : CorrelatedBy<Guid> { }
     /* ORDER SAGA SECTION END*/
+
     // Message for Warehouse with request for specified amount of specified book to be send to customer
     public interface WarehouseDeliveryStart : CorrelatedBy<Guid>
     {

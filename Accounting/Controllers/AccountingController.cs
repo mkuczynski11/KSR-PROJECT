@@ -29,9 +29,9 @@ namespace Accounting.Controllers
             Console.WriteLine($"Invoice for order with ID:{id} requested");
             Invoice invoice = _invoiceContext.InvoiceItems.SingleOrDefault(o => o.ID.Equals(id));
             if (invoice == null) return NotFound();
-            if (!invoice.IsPublic) return NotFound();
+            if (!invoice.IsPublic) return NoContent();
 
-            return new InvoiceResponse { Text = invoice.Text, IsPaid = invoice.IsPaid };
+            return new InvoiceResponse { Text = invoice.Text, IsPaid = invoice.IsPaid, IsCanceled = invoice.IsCanceled };
         }
 
         [HttpPost("invoices/{id}/pay")]
@@ -39,7 +39,8 @@ namespace Accounting.Controllers
         {
             Invoice invoice = _invoiceContext.InvoiceItems.SingleOrDefault(o => o.ID.Equals(id));
             if (invoice == null) return NotFound();
-            if (!invoice.IsPublic) return NotFound();
+            if (invoice.IsCanceled) return BadRequest();
+            if (!invoice.IsPublic) return BadRequest();
 
             if (!invoice.IsPaid)
             {

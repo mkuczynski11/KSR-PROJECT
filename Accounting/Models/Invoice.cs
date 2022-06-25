@@ -8,12 +8,14 @@ namespace Accounting.Models
         public string Text { get; set; }
         public bool IsPaid { get; set; }
         public bool IsPublic { get; set; }
+        public bool IsCanceled { get; set; }
 
         public Invoice()
         {
             Text = "";
             IsPaid = false;
             IsPublic = false;
+            IsCanceled = false;
         }
 
         public Invoice(string id)
@@ -22,6 +24,7 @@ namespace Accounting.Models
             Text = "";
             IsPaid = false;
             IsPublic = false;
+            IsCanceled = false;
         }
 
         public Invoice(string id, string bookID, string bookName, int bookQuantity, 
@@ -30,6 +33,7 @@ namespace Accounting.Models
             ID = id;
             IsPaid = false;
             IsPublic = false;
+            IsCanceled = false;
             Text = $"{DateTime.Now}\n" +
                 $"Order nr: {id}\n" +
                 $"Item ID: {bookID}\n" +
