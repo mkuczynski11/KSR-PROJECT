@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+  
+  shipping:
+   image: shippingimage
+   ports:
+    - "85:80"
+   depends_on:
+    - rabbitmq
+
+  accounting:
+    build: ./Accounting/
+    ports:
+      - "84:80"
+    depends_on:
+      - rabbitmq
+
+  contact:
+    build: ./Contact/
+    ports:
+      - "83:80"
+    depends_on:
+      - rabbitmq
+
+  marketing:
+    build: ./Marketing/
+    ports:
+      - "82:80"
+    depends_on:
+      - rabbitmq
+
+  sales:
+    build: ./Sales/
+    ports:
+      - "81:80"
+    depends_on:
+      - rabbitmq
+
+  warehouse:
+    build: ./Warehouse/
+    ports:
+      - "80:80"
+    depends_on:
+      - rabbitmq
