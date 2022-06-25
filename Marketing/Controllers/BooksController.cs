@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using MassTransit;
 using Marketing.Models;
+using System.Linq;
 
 namespace Marketing.Controllers
 {
@@ -22,6 +23,18 @@ namespace Marketing.Controllers
         public IEnumerable<Book> GetBooks()
         {
             return _bookContext.BookItems;
+        }
+        [HttpPut]
+        public ActionResult<Book> PutBook([FromBody] BookRequest request)
+        {
+            Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(request.BookID));
+
+            if (book == null) return NotFound();
+
+            book.discount = request.BookDiscount;
+            _bookContext.SaveChanges();
+
+            return book;
         }
     }
 }

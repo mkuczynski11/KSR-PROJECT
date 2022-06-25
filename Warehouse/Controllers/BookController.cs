@@ -27,85 +27,46 @@ namespace Warehouse.Controllers
         {
             return _bookContext.BookItems;
         }
-        // TODO: decide if we should keep an option to get a single book from warehouse
-        [HttpGet("{id}")]
-        public BookResponse GetBook(string id)
-        {
-            Console.WriteLine($"Book with ID:{id} requested");
-            Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(id));
-            if (book == null) return new BookResponse { name = "", quantity = -1, price = -1, discount = -1 };
-
-            // TODO: saga in which we ask sales and marketing for the book info
-
-            return new BookResponse { name = book.name, quantity = book.quantity, price = -1, discount = -1 };
-        }
         [HttpPost("create")]
-        public async Task<IActionResult> CreateBook([FromBody] BookRequest request)
+        public ActionResult<BookResponse> CreateBook([FromBody] BookRequest request)
         {
-            Console.WriteLine($"New Book:{request.name}, quantity={request.quantity}, price={request.price}, discount={request.discount} requested to be created");
+            Console.WriteLine($"New Book:{request.Name}, quantity={request.Quantity}, price={request.Price}, discount={request.Discount} requested to be created");
             string ID = Guid.NewGuid().ToString();
 
-            Book book = new Book(ID, request.name, request.quantity);
+            Book book = new Book(ID, request.Name, request.Quantity);
 
             _bookContext.BookItems.Add(book);
             _bookContext.SaveChanges();
 
-            Console.WriteLine($"Sending info:{ID}, price={request.price} to sales department");
-            await _publishEndpoint.Publish<NewBookSalesInfo>(new
+            Console.WriteLine($"Sending info:{ID}, price={request.Price} to sales department");
+            _publishEndpoint.Publish<NewBookSalesInfo>(new
             {
                 ID = ID,
-                price = request.price
+                price = request.Price
             });
 
-            Console.WriteLine($"Sending info:{ID}, price={request.discount} to marketing department");
-            await _publishEndpoint.Publish<NewBookMarketingInfo>(new
+            Console.WriteLine($"Sending info:{ID}, price={request.Discount} to marketing department");
+            _publishEndpoint.Publish<NewBookMarketingInfo>(new
             {
                 ID = ID,
-                discount = request.discount
+                discount = request.Discount
             });
 
-            return Ok();
+            return new BookResponse { ID = book.ID };
         }
-        //TODO: remove since it is here for testing purposes
-        [HttpPost("testSaga/test")]
-        public async Task<IActionResult> TestSaga()
+        [HttpPut]
+        public ActionResult<Book> PutBook([FromBody] BookUpdateRequest request)
         {
-            Console.WriteLine("testing saga");
-            Book book = new Book("asd", "name", 1);
-            _bookContext.BookItems.Add(book);
+            Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(request.ID));
+
+            if (book == null) return NotFound();
+            
+            book.name = request.Name;
+            book.quantity = request.Quantity;
+
             _bookContext.SaveChanges();
-            await _publishEndpoint.Publish<ShippingShipmentStart>(new
-            {
-                BookID = "asd",
-                BookQuantity = 1,
-                DeliveryMethod = "DPD",
-                DeliveryPrice = 10
-            });
 
-            return Ok();
-        }
-        //TODO: remove since it is here for testing purposes
-        [HttpPost("test/checkTest")]
-        public async Task<IActionResult> CheckTest()
-        {
-            Console.WriteLine("testing check messages");
-            Book book = new Book("asd", "name", 13);
-            _bookContext.BookItems.Add(book);
-            _bookContext.SaveChanges();
-            await _publishEndpoint.Publish<WarehouseConfirmation>(new
-            {
-                BookID = "asd",
-                BookQuantity = 8,
-                BookName = "name"
-            });
-
-            await _publishEndpoint.Publish<ShippingConfirmation>(new
-            {
-                DeliveryPrice = 10.0,
-                DeliveryMethod = "DPD"
-            });
-
-            return Ok();
+            return book;
         }
     }
 }

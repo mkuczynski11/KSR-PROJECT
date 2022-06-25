@@ -9,13 +9,15 @@ namespace Shipping.Models
     public class Price
     {
         [Key]
-        public double price { get; set; }
+        public string ID { get; set; }
+        public double PriceValue { get; set; }
 
         public Price() { }
 
-        public Price(double price)
+        public Price(string ID, double price)
         {
-            this.price = price;
+            this.ID = ID;
+            this.PriceValue = price;
         }
     }
 

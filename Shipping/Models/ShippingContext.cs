@@ -14,5 +14,6 @@ namespace Shipping.Models
 
         public DbSet<Price> PriceItems { get; set; }
         public DbSet<Method> MethodItems { get; set; }
+        public DbSet<Shipment> ShipmentItems { get; set; }
     }
 }

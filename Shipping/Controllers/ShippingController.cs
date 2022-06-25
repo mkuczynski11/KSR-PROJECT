@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Common;
 using System;
 using Shipping.Models;
+using System.Linq;
 
 namespace Shipping.Controllers
 {
@@ -31,6 +32,45 @@ namespace Shipping.Controllers
         public IEnumerable<Method> GetMethods()
         {
             return _shippingContext.MethodItems;
+        }
+        [HttpGet("shipments")]
+        public IEnumerable<Shipment> GetShipments()
+        {
+            return _shippingContext.ShipmentItems;
+        }
+        [HttpPut("price")]
+        public ActionResult<Price> PutPrice([FromBody] PriceRequest request)
+        {
+            Price price = _shippingContext.PriceItems.SingleOrDefault(p => p.ID.Equals("base"));
+
+            if (price == null) return NotFound();
+
+            price.PriceValue = request.Price;
+            _shippingContext.SaveChanges();
+
+            return price;
+        }
+        [HttpPost("methods")]
+        public ActionResult<Method> PutMethod([FromBody] MethodRequest request)
+        {
+            Method method = new Method(request.Method);
+
+            _shippingContext.MethodItems.Add(method);
+            _shippingContext.SaveChanges();
+
+            return method;
+        }
+        [HttpDelete("methods")]
+        public ActionResult<Method> DeleteMethod([FromBody] MethodRequest request)
+        {
+            Method method = _shippingContext.MethodItems.SingleOrDefault(m => m.MethodValue.Equals(request.Method));
+
+            if (method == null) return NotFound();
+
+            _shippingContext.MethodItems.Remove(method);
+            _shippingContext.SaveChanges();
+
+            return method;
         }
     }
 }
