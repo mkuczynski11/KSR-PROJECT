@@ -16,35 +16,35 @@ services:
     - rabbitmq
 
   accounting:
-    build: ./Accounting/
+    image: accountingimage
     ports:
       - "84:80"
     depends_on:
       - rabbitmq
 
   contact:
-    build: ./Contact/
+    image: contactimage
     ports:
       - "83:80"
     depends_on:
       - rabbitmq
 
   marketing:
-    build: ./Marketing/
+    image: marketingimage
     ports:
       - "82:80"
     depends_on:
       - rabbitmq
 
   sales:
-    build: ./Sales/
+    image: salesimage
     ports:
       - "81:80"
     depends_on:
       - rabbitmq
 
   warehouse:
-    build: ./Warehouse/
+    image: warehouseimage
     ports:
       - "80:80"
     depends_on:
