@@ -6,15 +6,22 @@ using System.Linq;
 
 namespace Accounting.Models
 {
+    public interface AccountingInvoicePaymentTimeoutExpired 
+    { 
+        Guid InvoiceId { get; }
+    }
+
     public class InvoiceSagaData : SagaStateMachineInstance
     {
         public Guid CorrelationId { get; set; }
-        public Guid? TimeoutId { get; set; }
+        public Guid? AccountingInvoicePaymentTimeoutId { get; set; }
         public string CurrentState { get; set; }
     }
 
     public class InvoiceSaga : MassTransitStateMachine<InvoiceSagaData>, IDisposable
     {
+        public const int PaymentTimeoutSeconds = 30;
+
         private readonly IServiceScope _scope;
 
         public State AwaitingPublishing { get; private set; }
@@ -25,11 +32,20 @@ namespace Accounting.Models
         public Event<AccountingInvoiceCancel> AccountingInvoiceCancelEvent { get; private set; }
         public Event<AccountingInvoicePaid> AccountingInvoicePaidEvent { get; private set; }
 
+        public Schedule<InvoiceSagaData, AccountingInvoicePaymentTimeoutExpired> AccountingInvoicePaymentTimeout { get; private set; }
+
+
         public InvoiceSaga(IServiceProvider services)
         {
             _scope = services.CreateScope();
 
             InstanceState(x => x.CurrentState);
+
+            Schedule(() => AccountingInvoicePaymentTimeout, instance => instance.AccountingInvoicePaymentTimeoutId, s =>
+            {
+                s.Delay = TimeSpan.FromSeconds(PaymentTimeoutSeconds);
+                s.Received = r => r.CorrelateById(context => context.Message.InvoiceId);
+            });
 
             Initially(
                 When(AccountingInvoiceStartEvent)
@@ -69,6 +85,10 @@ namespace Accounting.Models
                         invoices.SaveChanges();
                     }
                 })
+                .Schedule(AccountingInvoicePaymentTimeout, context => context.Init<AccountingInvoicePaymentTimeoutExpired>(new
+                {
+                    InvoiceId = context.Message.CorrelationId
+                }))
                 .TransitionTo(AwaitingPayment),
                 When(AccountingInvoiceCancelEvent)
                 .Then(context =>
@@ -90,12 +110,33 @@ namespace Accounting.Models
 
             During(AwaitingPayment,
                 When(AccountingInvoicePaidEvent)
+                .Unschedule(AccountingInvoicePaymentTimeout)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}, invoice paid.");
                 })
+                .Finalize(),
+
+                When(AccountingInvoicePaymentTimeout.Received)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.InvoiceId}, payment time expired.");
+
+                    var invoices = _scope.ServiceProvider.GetRequiredService<InvoiceContext>();
+                    Invoice invoice = invoices.InvoiceItems
+                        .SingleOrDefault(o => o.ID.Equals(context.Message.InvoiceId.ToString()));
+                    if (invoice != null)
+                    {
+                        invoice.IsCanceled = true;
+                        invoices.InvoiceItems.Update(invoice);
+                        invoices.SaveChanges();
+                    }
+                })
+                .PublishAsync(context => context.Init<AccountingInvoiceNotPaid>(new
+                {
+                    CorrelationId = context.Message.InvoiceId
+                }))
                 .Finalize()
-                //TODO: Add timeout for payment and send AccountingInvoiceNotPaid message
                 );
         }
 

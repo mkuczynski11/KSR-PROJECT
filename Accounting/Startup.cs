@@ -48,6 +48,7 @@ namespace Accounting
                     {
                         ep.ConfigureSaga<InvoiceSagaData>(context);
                     });
+                    cfg.UseInMemoryScheduler();
                 });
             });
 
