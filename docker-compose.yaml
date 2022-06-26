@@ -9,42 +9,54 @@ services:
       - "15672:15672"
   
   shipping:
-   image: shippingimage
+   build:
+    context: ./
+    dockerfile: ./Dockerfile.Shipping
    ports:
     - "85:80"
    depends_on:
     - rabbitmq
 
   accounting:
-    image: accountingimage
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Accounting
     ports:
       - "84:80"
     depends_on:
       - rabbitmq
 
   contact:
-    image: contactimage
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Contact
     ports:
       - "83:80"
     depends_on:
       - rabbitmq
 
   marketing:
-    image: marketingimage
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Marketing
     ports:
       - "82:80"
     depends_on:
       - rabbitmq
 
   sales:
-    image: salesimage
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Sales
     ports:
       - "81:80"
     depends_on:
       - rabbitmq
 
   warehouse:
-    image: warehouseimage
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Warehouse
     ports:
       - "80:80"
     depends_on:
