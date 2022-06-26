@@ -1,0 +1,20 @@
+{
+  "Routes": [
+    //Contact API
+    {
+      "DownstreamPathTemplate": "/contact/orders/create",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": "83"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/contact/orders/create",
+      "UpstreamHttpMethod": [ "POST" ]
+    }
+  ],
+  "GlobalConfiguration": {
+    
+  }
+}
