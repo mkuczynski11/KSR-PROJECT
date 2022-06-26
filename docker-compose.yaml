@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+  
+  shipping:
+   build:
+    context: ./
+    dockerfile: ./Dockerfile.Shipping
+   ports:
+    - "85:80"
+   depends_on:
+    - rabbitmq
+
+  accounting:
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Accounting
+    ports:
+      - "84:80"
+    depends_on:
+      - rabbitmq
+
+  contact:
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Contact
+    ports:
+      - "83:80"
+    depends_on:
+      - rabbitmq
+
+  marketing:
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Marketing
+    ports:
+      - "82:80"
+    depends_on:
+      - rabbitmq
+
+  sales:
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Sales
+    ports:
+      - "81:80"
+    depends_on:
+      - rabbitmq
+
+  warehouse:
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.Warehouse
+    ports:
+      - "80:80"
+    depends_on:
+      - rabbitmq

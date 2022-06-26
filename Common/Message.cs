@@ -1,14 +1,12 @@
-using MassTransit;
+﻿using MassTransit;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MassTransit;
 
 namespace Common
 {
-    // Message for Sales with information about new book
     public interface NewBookSalesInfo
     {
         string ID { get; set; }
