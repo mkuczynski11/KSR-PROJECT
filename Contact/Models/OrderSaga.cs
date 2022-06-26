@@ -8,10 +8,17 @@ using System.Threading.Tasks;
 
 namespace Contact.Models
 {
+    public interface ContactOrderConfirmationTimeoutExpired
+    {
+        Guid OrderId { get; }
+    }
+
+    public interface ContactConfirmationConfirmedByAllParties : CorrelatedBy<Guid> { }
+
     public class OrderSagaData : SagaStateMachineInstance
     {
         public Guid CorrelationId { get; set; }
-        public Guid? TimeoutId { get; set; }
+        public Guid? ContactOrderConfirmationTimeoutId { get; set; }
         public string CurrentState { get; set; }
         public string DeliveryMethod { get; set; }
         public double DeliveryPrice { get; set; }
@@ -21,6 +28,8 @@ namespace Contact.Models
 
     public class OrderSaga : MassTransitStateMachine<OrderSagaData>, IDisposable
     {
+        public const int ConfirmationTimeoutSeconds = 30;
+
         private readonly IServiceScope _scope;
 
         public State AwaitingConfirmation { get; private set; }
@@ -35,6 +44,8 @@ namespace Contact.Models
         public Event<MarketingConfirmationAccept> MarketingConfirmationAcceptEvent { get; private set; }
         public Event<ShippingConfirmationAccept> ShippingConfirmationAcceptEvent { get; private set; }
 
+        public Event<ContactConfirmationConfirmedByAllParties> ContactConfirmationConfirmedByAllPartiesEvent { get; private set; }
+
         public Event<ClientConfirmationRefuse> ClientConfirmationRefuseEvent { get; private set; }
         public Event<WarehouseConfirmationRefuse> WarehouseConfirmationRefuseEvent { get; private set; }
         public Event<SalesConfirmationRefuse> SalesConfirmationRefuseEvent { get; private set; }
@@ -47,11 +58,19 @@ namespace Contact.Models
         public Event<ShippingShipmentSent> ShippingShipmentSentEvent { get; private set; }
         public Event<ShippingShipmentNotSent> ShippingShipmentNotSentEvent { get; private set; }
 
+        public Schedule<OrderSagaData, ContactOrderConfirmationTimeoutExpired> ContactOrderConfirmationTimeout { get; private set; }
+
         public OrderSaga(IServiceProvider services)
         {
             _scope = services.CreateScope();
 
             InstanceState(x => x.CurrentState);
+
+            Schedule(() => ContactOrderConfirmationTimeout, instance => instance.ContactOrderConfirmationTimeoutId, s =>
+            {
+                s.Delay = TimeSpan.FromSeconds(ConfirmationTimeoutSeconds);
+                s.Received = r => r.CorrelateById(context => context.Message.OrderId);
+            });
 
             Initially(
                 When(OrderStartEvent)
@@ -101,6 +120,10 @@ namespace Contact.Models
                     DeliveryMethod = context.Message.DeliveryMethod,
                     DeliveryPrice = context.Message.DeliveryPrice
                 }))
+                .Schedule(ContactOrderConfirmationTimeout, context => context.Init<ContactOrderConfirmationTimeoutExpired>(new
+                {
+                    OrderId = context.Message.CorrelationId
+                }))
                 .TransitionTo(AwaitingConfirmation)
                 );
 
@@ -128,7 +151,11 @@ namespace Contact.Models
                             {
                                 CorrelationId = context.Message.CorrelationId
                             });
-                            context.TransitionToState(AwaitingPayment);
+                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            //context.TransitionToState(AwaitingPayment);
                         }
                     }
                 }),
@@ -153,7 +180,11 @@ namespace Contact.Models
                             {
                                 CorrelationId = context.Message.CorrelationId
                             });
-                            context.TransitionToState(AwaitingPayment);
+                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            //context.TransitionToState(AwaitingPayment);
                         }
                     }
                 }),
@@ -178,7 +209,11 @@ namespace Contact.Models
                             {
                                 CorrelationId = context.Message.CorrelationId
                             });
-                            context.TransitionToState(AwaitingPayment);
+                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            //context.TransitionToState(AwaitingPayment);
                         }
                     }
                 }),
@@ -203,7 +238,11 @@ namespace Contact.Models
                             {
                                 CorrelationId = context.Message.CorrelationId
                             });
-                            context.TransitionToState(AwaitingPayment);
+                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            //context.TransitionToState(AwaitingPayment);
                         }
                     }
                 }),
@@ -228,10 +267,52 @@ namespace Contact.Models
                             {
                                 CorrelationId = context.Message.CorrelationId
                             });
-                            context.TransitionToState(AwaitingPayment);
+                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                            //context.TransitionToState(AwaitingPayment);
                         }
                     }
                 }),
+                When(ContactConfirmationConfirmedByAllPartiesEvent)
+                .Unschedule(ContactOrderConfirmationTimeout)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"confirmed by all parties.");
+                })
+                .TransitionTo(AwaitingPayment),
+
+                When(ContactOrderConfirmationTimeout.Received)
+                .Then(context => 
+                {
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
+
+                    string message = $"Order ID={context.Message.OrderId}: ";
+
+                    if (order != null)
+                    {
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+
+                        message += "\n" + order;
+                    }
+
+                    Console.WriteLine(message);
+                })
+                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
+                {
+                    CorrelationId = context.Message.OrderId
+                }))
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.OrderId
+                }))
+                .Finalize(),
 
                 When(ClientConfirmationRefuseEvent)
                 .Then(context =>
@@ -250,11 +331,19 @@ namespace Contact.Models
                         orders.SaveChanges();
                     }
 
-                    context.Publish<AccountingInvoiceCancel>(new
-                    {
-                        CorrelationId = context.Message.CorrelationId
-                    });
+                    //context.Publish<AccountingInvoiceCancel>(new
+                    //{
+                    //    CorrelationId = context.Message.CorrelationId
+                    //});
                 })
+                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
                 .Finalize(),
                 When(WarehouseConfirmationRefuseEvent)
                 .Then(context =>
@@ -273,11 +362,19 @@ namespace Contact.Models
                         orders.SaveChanges();
                     }
 
-                    context.Publish<AccountingInvoiceCancel>(new
-                    {
-                        CorrelationId = context.Message.CorrelationId
-                    });
+                    //context.Publish<AccountingInvoiceCancel>(new
+                    //{
+                    //    CorrelationId = context.Message.CorrelationId
+                    //});
                 })
+                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
                 .Finalize(),
                 When(SalesConfirmationRefuseEvent)
                 .Then(context =>
@@ -296,11 +393,19 @@ namespace Contact.Models
                         orders.SaveChanges();
                     }
 
-                    context.Publish<AccountingInvoiceCancel>(new
-                    {
-                        CorrelationId = context.Message.CorrelationId
-                    });
+                    //context.Publish<AccountingInvoiceCancel>(new
+                    //{
+                    //    CorrelationId = context.Message.CorrelationId
+                    //});
                 })
+                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
                 .Finalize(),
                 When(MarketingConfirmationRefuseEvent)
                 .Then(context =>
@@ -319,11 +424,19 @@ namespace Contact.Models
                         orders.SaveChanges();
                     }
 
-                    context.Publish<AccountingInvoiceCancel>(new
-                    {
-                        CorrelationId = context.Message.CorrelationId
-                    });
+                    //context.Publish<AccountingInvoiceCancel>(new
+                    //{
+                    //    CorrelationId = context.Message.CorrelationId
+                    //});
                 })
+                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
                 .Finalize(),
                 When(ShippingConfirmationRefuseEvent)
                 .Then(context =>
@@ -342,11 +455,19 @@ namespace Contact.Models
                         orders.SaveChanges();
                     }
 
-                    context.Publish<AccountingInvoiceCancel>(new
-                    {
-                        CorrelationId = context.Message.CorrelationId
-                    });
+                    //context.Publish<AccountingInvoiceCancel>(new
+                    //{
+                    //    CorrelationId = context.Message.CorrelationId
+                    //});
                 })
+                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
                 .Finalize()
                 );
 
@@ -394,6 +515,10 @@ namespace Contact.Models
                         orders.SaveChanges();
                     }
                 })
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
                 .Finalize()
                 );
 

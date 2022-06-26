@@ -47,5 +47,40 @@ namespace Contact.Models
             return IsConfirmedByClient && IsConfirmedByWarehouse && IsConfirmedBySales &&
                 IsConfirmedByMarketing && IsConfirmedByShipping;
         }
+
+        public override string ToString()
+        {
+            string confStatus = "";
+
+            if (IsConfirmedByClient)
+                confStatus += "\tClient: Confirmed\n";
+            else
+                confStatus += "\tClient: Not confirmed\n";
+
+            if (IsConfirmedByWarehouse)
+                confStatus += "\tWarehouse: Confirmed\n";
+            else
+                confStatus += "\tWarehouse: Not confirmed\n";
+
+            if (IsConfirmedBySales)
+                confStatus += "\tSales: Confirmed\n";
+            else
+                confStatus += "\tSales: Not confirmed\n";
+
+            if (IsConfirmedByMarketing)
+                confStatus += "\tMarketing: Confirmed\n";
+            else
+                confStatus += "\tMarketing: Not confirmed\n";
+
+            if (IsConfirmedByShipping)
+                confStatus += "\tShipping: Confirmed";
+            else
+                confStatus += "\tShipping: Not confirmed";
+
+            if (IsCanceled)
+                confStatus += "\n\tOrder canceled";
+
+            return confStatus;
+        }
     }
 }

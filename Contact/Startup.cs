@@ -48,6 +48,7 @@ namespace Contact
                     {
                         ep.ConfigureSaga<OrderSagaData>(context);
                     });
+                    cfg.UseInMemoryScheduler();
                 });
             });
 
