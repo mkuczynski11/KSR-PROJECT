@@ -138,6 +138,8 @@ namespace Accounting.Models
                 }))
                 .Finalize()
                 );
+
+            SetCompletedWhenFinalized();
         }
 
         public void Dispose()

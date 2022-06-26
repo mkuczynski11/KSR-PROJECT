@@ -15,6 +15,11 @@ using System.Threading.Tasks;
 
 namespace Shipping
 {
+    public interface ShippingWarehouseDeliveryConfirmationTimeoutExpired
+    {
+        Guid ShippingId { get; }
+    }
+
     public class Startup
     {
         public Startup(IConfiguration configuration)
@@ -50,6 +55,7 @@ namespace Shipping
                     {
                         ep.ConfigureSaga<DeliveryState>(context);
                     });
+                    cfg.UseInMemoryScheduler();
 
                     cfg.ReceiveEndpoint("shipping-delivery-confirmation-request-event", ep =>
                     {
@@ -102,6 +108,8 @@ namespace Shipping
 
         public class DeliveryStateMachine : MassTransitStateMachine<DeliveryState>, IDisposable
         {
+            public const int WarehouseDeliveryConfirmationTimeoutSeconds = 10;
+
             private readonly IServiceScope _scope;
 
             public State RequestSend { get; private set; }
@@ -112,11 +120,19 @@ namespace Shipping
             public Event<WarehouseDeliveryStartConfirmation> WarehouseDeliveryConfirmationEvent { get; private set; }
             public Event<WarehouseDeliveryStartRejection> WarehouseDeliveryRejectionEvent { get; private set; }
 
+            public Schedule<DeliveryState, ShippingWarehouseDeliveryConfirmationTimeoutExpired> ShippingWarehouseDeliveryConfirmationTimeout { get; private set; }
+
             public DeliveryStateMachine(IServiceProvider services)
             {
                 _scope = services.CreateScope();
 
                 InstanceState(x => x.CurrentState);
+
+                Schedule(() => ShippingWarehouseDeliveryConfirmationTimeout, instance => instance.ShippingWarehouseDeliveryConfirmationTimeoutId, s =>
+                {
+                    s.Delay = TimeSpan.FromSeconds(WarehouseDeliveryConfirmationTimeoutSeconds);
+                    s.Received = r => r.CorrelateById(context => context.Message.ShippingId);
+                });
 
                 Initially(
                     When(ShippingShipmentStartEvent)
@@ -133,11 +149,16 @@ namespace Shipping
 
                     })
                     .PublishAsync(context => context.Init<WarehouseDeliveryStart>(new { CorrelationId = context.Message.CorrelationId, BookID = context.Message.BookID, BookQuantity = context.Message.BookQuantity}))
+                    .Schedule(ShippingWarehouseDeliveryConfirmationTimeout, context => context.Init<ShippingWarehouseDeliveryConfirmationTimeoutExpired>(new
+                    {
+                        ShippingId = context.Message.CorrelationId
+                    }))
                     .TransitionTo(RequestSend)
                     );
 
                 During(RequestSend,
                     When(WarehouseDeliveryConfirmationEvent)
+                    .Unschedule(ShippingWarehouseDeliveryConfirmationTimeout)
                     .Then(context => {
                         var shipments = _scope.ServiceProvider.GetRequiredService<ShippingContext>();
                         Shipment shipment = shipments.ShipmentItems.SingleOrDefault(s => s.ID.Equals(context.Message.CorrelationId.ToString()));
@@ -155,6 +176,12 @@ namespace Shipping
                         Console.WriteLine($"Warehouse denied that this book is available");
                     })
                     .PublishAsync(context => context.Init<ShippingShipmentNotSent>(new { CorrelationId = context.Message.CorrelationId }))
+                    .Finalize(),
+                    When(ShippingWarehouseDeliveryConfirmationTimeout.Received)
+                    .Then(context => {
+                        Console.WriteLine($"Warehouse did not confirm the availability in time");
+                    })
+                    .PublishAsync(context => context.Init<ShippingShipmentNotSent>(new { CorrelationId = context.Message.ShippingId }))
                     .Finalize()
                     );
                 SetCompletedWhenFinalized();
@@ -169,6 +196,7 @@ namespace Shipping
         public class DeliveryState : SagaStateMachineInstance
         {
             public Guid CorrelationId { get; set; }
+            public Guid? ShippingWarehouseDeliveryConfirmationTimeoutId { get; set; }
             public string CurrentState { get; set; }
             public string BookID { get; set; }
             public int BookQuantity { get; set; }
