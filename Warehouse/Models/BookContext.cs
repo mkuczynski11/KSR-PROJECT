@@ -13,5 +13,6 @@ namespace Warehouse.Models
         }
 
         public DbSet<Book> BookItems { get; set; }
+        public DbSet<Reservation> ReservationItems { get; set; }
     }
 }

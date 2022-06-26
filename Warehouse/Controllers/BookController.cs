@@ -61,8 +61,8 @@ namespace Warehouse.Controllers
 
             if (book == null) return NotFound();
             
-            book.name = request.Name;
-            book.quantity = request.Quantity;
+            book.Name = request.Name;
+            book.Quantity = request.Quantity;
 
             _bookContext.SaveChanges();
 
