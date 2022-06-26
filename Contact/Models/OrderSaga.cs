@@ -560,6 +560,8 @@ namespace Contact.Models
                 })
                 .Finalize()
                 );
+
+            SetCompletedWhenFinalized();
         }
 
         public void Dispose()

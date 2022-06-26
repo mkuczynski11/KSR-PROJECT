@@ -44,10 +44,10 @@ namespace Contact.Controllers
             {
                 CorrelationId = order.ID
             });
-            _publishEndpoint.Publish<ShippingConfirmationAccept>(new
-            {
-                CorrelationId = order.ID
-            });
+            //_publishEndpoint.Publish<ShippingConfirmationAccept>(new
+            //{
+            //    CorrelationId = order.ID
+            //});
 
             return Ok();
         }
