@@ -1,16 +1,93 @@
 {
-  "Routes": [
+  "ReRoutes": [
     //Contact API
     {
-      "DownstreamPathTemplate": "/contact/orders/create",
+      "DownstreamPathTemplate": "/contact/orders/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": "83"
+          "Host": "contact",
+          "Port": "80"
         }
       ],
-      "UpstreamPathTemplate": "/api/contact/orders/create",
+      "UpstreamPathTemplate": "/api/contact/orders/{everything}",
+      "UpstreamHttpMethod": [ "POST", "GET" ]
+    },
+    //Accounting API
+    {
+      "DownstreamPathTemplate": "/accounting/invoices/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "accounting",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/accounting/invoices/{everything}",
+      "UpstreamHttpMethod": [ "POST", "GET" ]
+    },
+    //Marketing API
+    {
+      "DownstreamPathTemplate": "/marketing/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "marketing",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/marketing/books",
+      "UpstreamHttpMethod": [ "PUT", "GET" ]
+    },
+    //Sales API
+    {
+      "DownstreamPathTemplate": "/sales/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "sales",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/sales/books",
+      "UpstreamHttpMethod": [ "PUT", "GET" ]
+    },
+    //Shipping API
+    {
+      "DownstreamPathTemplate": "/shipping/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "shipping",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/shipping/{everything}",
+      "UpstreamHttpMethod": [ "PUT", "GET", "POST", "DELETE" ]
+    },
+    //Warehouse API
+    {
+      "DownstreamPathTemplate": "/warehouse/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "warehouse",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/warehouse/books",
+      "UpstreamHttpMethod": [ "PUT", "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/warehouse/books/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "warehouse",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/warehouse/books/{everything}",
       "UpstreamHttpMethod": [ "POST" ]
     }
   ],
