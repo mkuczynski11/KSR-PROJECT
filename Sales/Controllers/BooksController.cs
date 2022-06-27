@@ -31,7 +31,7 @@ namespace Sales.Controllers
 
             if (book == null) return NotFound();
 
-            book.price = request.BookPrice;
+            book.Price = request.BookPrice;
             _bookContext.SaveChanges();
 
             return book;

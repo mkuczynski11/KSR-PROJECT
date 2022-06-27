@@ -94,23 +94,38 @@ namespace Warehouse
 
                 Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(bookID));
                 bool valid = true;
-                if (book == null) valid = false;
+                if (book == null)
+                {
+                    Console.WriteLine($"No book for reservation with ID={context.Message.CorrelationId} found. BookID={bookID}, quantity={bookQuantity}.");
+                    valid = false;
+                }
 
-                Reservation reservation = _bookContext.ReservationItems.SingleOrDefault(r => r.ID.Equals(context.Message.CorrelationId));
-                if (reservation == null) valid = false;
-                else if (reservation.IsRedeemed) valid = false;
-                else if (reservation.IsCancelled) valid = false;
+                Reservation reservation = _bookContext.ReservationItems.SingleOrDefault(r => r.ID.Equals(context.Message.CorrelationId.ToString()));
+                if (reservation == null)
+                {
+                    Console.WriteLine($"No reservation with ID={context.Message.CorrelationId} found. BookID={bookID}, quantity={bookQuantity}.");
+                    valid = false;
+                }
+                else if (reservation.IsRedeemed)
+                {
+                    Console.WriteLine($"Reservation with ID={context.Message.CorrelationId} is redeemed. BookID={bookID}, quantity={bookQuantity}.");
+                    valid = false;
+                }
+                else if (reservation.IsCancelled)
+                {
+                    Console.WriteLine($"Reservation with ID={context.Message.CorrelationId} is cancelled. BookID={bookID}, quantity={bookQuantity}.");
+                    valid = false;
+                }
 
                 if (valid)
                 {
-                    Console.WriteLine($"Book={bookID} can successfully deliver {bookQuantity} amount of it.");
+                    Console.WriteLine($"Warehouse is able to reddem reservation with ID={context.Message.CorrelationId}. BookID={bookID}, quantity={bookQuantity}.");
                     reservation.IsRedeemed = true;
                     _bookContext.SaveChanges();
                     await _publishEndpoint.Publish<WarehouseDeliveryStartConfirmation>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
-                    Console.WriteLine($"Book={bookID} cannot be delivered by the warehouse");
                     await _publishEndpoint.Publish<WarehouseDeliveryStartRejection>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
@@ -132,19 +147,32 @@ namespace Warehouse
 
                 Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(bookID));
                 bool valid = true;
-                if (book == null) valid = false;
-                else if (book.Quantity < bookQuantity) valid = false;
-                else if (!book.Name.Equals(bookName)) valid = false;
+                if (book == null)
+                {
+                    Console.WriteLine($"No book with provided info found.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
+                    valid = false;
+                }
+                else if (book.Quantity < bookQuantity)
+                {
+                    Console.WriteLine($"Warehouse has less amount of book then requested.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
+                    valid = false;
+                }
+                else if (!book.Name.Equals(bookName))
+                {
+                    Console.WriteLine($"Requested book has wrong name.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
+                    valid = false;
+                }
 
                 if (valid)
                 {
                     _bookContext.ReservationItems.Add(new Reservation(context.Message.CorrelationId.ToString(), book.ID, context.Message.BookQuantity, false, false));
-                    Console.WriteLine($"There is {bookQuantity} amount of book={bookID}. Order can be made");
+                    book.Quantity -= bookQuantity;
+                    _bookContext.SaveChanges();
+                    Console.WriteLine($"There is {bookQuantity} amount of BookID={bookID}, name={bookName}. Order can be made");
                     await _publishEndpoint.Publish<WarehouseConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
-                    Console.WriteLine($"Missing {bookQuantity} amount of book={bookID}. Current amount={book.Quantity}");
                     await _publishEndpoint.Publish<WarehouseConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
@@ -160,7 +188,7 @@ namespace Warehouse
             }
             public async Task Consume(ConsumeContext<OrderCancel> context)
             {
-                Reservation reservation = _bookContext.ReservationItems.SingleOrDefault(r => r.ID.Equals(context.Message.CorrelationId));
+                Reservation reservation = _bookContext.ReservationItems.SingleOrDefault(r => r.ID.Equals(context.Message.CorrelationId.ToString()));
 
                 if (reservation != null)
                 {

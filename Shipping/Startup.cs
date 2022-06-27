@@ -219,15 +219,20 @@ namespace Shipping
                 Price price = _shippingContext.PriceItems.SingleOrDefault(b => b.PriceValue.Equals(deliveryPrice));
                 Method method = _shippingContext.MethodItems.SingleOrDefault(b => b.MethodValue.Equals(deliveryMethod));
 
-                if (price != null && method != null)
+                if (price == null )
                 {
-                    Console.WriteLine($"Delivery information is valid.");
-                    await _publishEndpoint.Publish<ShippingConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
+                    Console.WriteLine($"Price={deliveryPrice} was invalid for request {context.Message.CorrelationId}.");
+                    await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
+                }
+                else if (method == null)
+                {
+                    Console.WriteLine($"Method={deliveryMethod} was invalid for request {context.Message.CorrelationId}.");
+                    await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
-                    Console.WriteLine($"Delivery information is invalid.");
-                    await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
+                    Console.WriteLine($"Delivery information is correct for request {context.Message.CorrelationId}.");
+                    await _publishEndpoint.Publish<ShippingConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
         }
