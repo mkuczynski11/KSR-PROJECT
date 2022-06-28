@@ -14,6 +14,7 @@ namespace Contact.Models
     }
 
     public interface ContactConfirmationConfirmedByAllParties : CorrelatedBy<Guid> { }
+    public interface ContactConfirmationRefusedByAtLeastOneParty : CorrelatedBy<Guid> { }
 
     public class OrderSagaData : SagaStateMachineInstance
     {
@@ -24,6 +25,17 @@ namespace Contact.Models
         public double DeliveryPrice { get; set; }
         public string BookID { get; set; }
         public int BookQuantity { get; set; }
+        public bool ClientResponded { get; set; }
+        public bool WarehouseResponded { get; set; }
+        public bool SalesResponded { get; set; }
+        public bool MarketingResponded { get; set; }
+        public bool ShippingResponded { get; set; }
+
+        public bool AllResponded()
+        {
+            return ClientResponded && WarehouseResponded && SalesResponded &&
+                MarketingResponded && ShippingResponded;
+        }
     }
 
     public class OrderSaga : MassTransitStateMachine<OrderSagaData>, IDisposable
@@ -51,6 +63,8 @@ namespace Contact.Models
         public Event<SalesConfirmationRefuse> SalesConfirmationRefuseEvent { get; private set; }
         public Event<MarketingConfirmationRefuse> MarketingConfirmationRefuseEvent { get; private set; }
         public Event<ShippingConfirmationRefuse> ShippingConfirmationRefuseEvent { get; private set; }
+
+        public Event<ContactConfirmationRefusedByAtLeastOneParty> ContactConfirmationRefusedByAtLeastOnePartyEvent { get; private set; }
 
         public Event<AccountingInvoicePaid> AccountingInvoicePaidEvent { get; private set; }
         public Event<AccountingInvoiceNotPaid> AccountingInvoiceNotPaidEvent { get; private set; }
@@ -83,6 +97,11 @@ namespace Contact.Models
                     context.Saga.DeliveryPrice = context.Message.DeliveryPrice;
                     context.Saga.BookQuantity = context.Message.BookQuantity;
                     context.Saga.BookID = context.Message.BookID;
+                    context.Saga.ClientResponded = false;
+                    context.Saga.WarehouseResponded = false;
+                    context.Saga.SalesResponded = false;
+                    context.Saga.MarketingResponded = false;
+                    context.Saga.ShippingResponded = false;
                 })
                 .PublishAsync(context => context.Init<WarehouseConfirmation>(new
                 {
@@ -136,6 +155,8 @@ namespace Contact.Models
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                         $"received client confirmation.");
 
+                    context.Saga.ClientResponded = true;
+
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
@@ -145,17 +166,26 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed())
+                        if (context.Saga.AllResponded())
                         {
-                            context.Publish<AccountingInvoicePublish>(new
+                            if (order.isConfirmed())
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                context.Publish<AccountingInvoicePublish>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                                context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
+                            else
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            //context.TransitionToState(AwaitingPayment);
+                                context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
                         }
                     }
                 }),
@@ -164,6 +194,8 @@ namespace Contact.Models
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"received warehouse confirmation.");
+
+                    context.Saga.WarehouseResponded = true;
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -174,17 +206,26 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed())
+                        if (context.Saga.AllResponded())
                         {
-                            context.Publish<AccountingInvoicePublish>(new
+                            if (order.isConfirmed())
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                context.Publish<AccountingInvoicePublish>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                                context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
+                            else
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            //context.TransitionToState(AwaitingPayment);
+                                context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
                         }
                     }
                 }),
@@ -193,6 +234,8 @@ namespace Contact.Models
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"received sales confirmation.");
+
+                    context.Saga.SalesResponded = true;
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -203,17 +246,26 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed())
+                        if (context.Saga.AllResponded())
                         {
-                            context.Publish<AccountingInvoicePublish>(new
+                            if (order.isConfirmed())
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                context.Publish<AccountingInvoicePublish>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                                context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
+                            else
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            //context.TransitionToState(AwaitingPayment);
+                                context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
                         }
                     }
                 }),
@@ -222,6 +274,8 @@ namespace Contact.Models
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"received marketing confirmation.");
+
+                    context.Saga.MarketingResponded = true;
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -232,17 +286,26 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed())
+                        if (context.Saga.AllResponded())
                         {
-                            context.Publish<AccountingInvoicePublish>(new
+                            if (order.isConfirmed())
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                context.Publish<AccountingInvoicePublish>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                                context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
+                            else
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            //context.TransitionToState(AwaitingPayment);
+                                context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
                         }
                     }
                 }),
@@ -251,6 +314,8 @@ namespace Contact.Models
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"received shipping confirmation.");
+
+                    context.Saga.ShippingResponded = true;
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -261,17 +326,26 @@ namespace Contact.Models
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
 
-                        if (order.isConfirmed())
+                        if (context.Saga.AllResponded())
                         {
-                            context.Publish<AccountingInvoicePublish>(new
+                            if (order.isConfirmed())
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                context.Publish<AccountingInvoicePublish>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                                context.Publish<ContactConfirmationConfirmedByAllParties>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
+                            else
                             {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                            //context.TransitionToState(AwaitingPayment);
+                                context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                                {
+                                    CorrelationId = context.Message.CorrelationId
+                                });
+                            }
                         }
                     }
                 }),
@@ -321,36 +395,33 @@ namespace Contact.Models
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by client.");
 
+                    context.Saga.ClientResponded = true;
+
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
                     if (order != null)
                     {
                         order.IsConfirmedByClient = false;
-                        order.IsCanceled = true;
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
-                    }
 
-                    //context.Publish<AccountingInvoiceCancel>(new
-                    //{
-                    //    CorrelationId = context.Message.CorrelationId
-                    //});
-                })
-                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
-                {
-                    CorrelationId = context.Message.CorrelationId
-                }))
-                .PublishAsync(context => context.Init<OrderCancel>(new
-                {
-                    CorrelationId = context.Message.CorrelationId
-                }))
-                .Finalize(),
+                        if (context.Saga.AllResponded())
+                        {
+                            context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                        }
+                    }
+                }),
                 When(WarehouseConfirmationRefuseEvent)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by warehouse.");
+
+                    context.Saga.WarehouseResponded = true;
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -358,30 +429,25 @@ namespace Contact.Models
                     if (order != null)
                     {
                         order.IsConfirmedByWarehouse = false;
-                        order.IsCanceled = true;
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
-                    }
 
-                    //context.Publish<AccountingInvoiceCancel>(new
-                    //{
-                    //    CorrelationId = context.Message.CorrelationId
-                    //});
-                })
-                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
-                {
-                    CorrelationId = context.Message.CorrelationId
-                }))
-                .PublishAsync(context => context.Init<OrderCancel>(new
-                {
-                    CorrelationId = context.Message.CorrelationId
-                }))
-                .Finalize(),
+                        if (context.Saga.AllResponded())
+                        {
+                            context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                        }
+                    }
+                }),
                 When(SalesConfirmationRefuseEvent)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by sales.");
+
+                    context.Saga.SalesResponded = true;
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -389,30 +455,25 @@ namespace Contact.Models
                     if (order != null)
                     {
                         order.IsConfirmedBySales = false;
-                        order.IsCanceled = true;
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
-                    }
 
-                    //context.Publish<AccountingInvoiceCancel>(new
-                    //{
-                    //    CorrelationId = context.Message.CorrelationId
-                    //});
-                })
-                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
-                {
-                    CorrelationId = context.Message.CorrelationId
-                }))
-                .PublishAsync(context => context.Init<OrderCancel>(new
-                {
-                    CorrelationId = context.Message.CorrelationId
-                }))
-                .Finalize(),
+                        if (context.Saga.AllResponded())
+                        {
+                            context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                        }
+                    }
+                }),
                 When(MarketingConfirmationRefuseEvent)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by marketing.");
+
+                    context.Saga.MarketingResponded = true;
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -420,30 +481,25 @@ namespace Contact.Models
                     if (order != null)
                     {
                         order.IsConfirmedByMarketing = false;
-                        order.IsCanceled = true;
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
-                    }
 
-                    //context.Publish<AccountingInvoiceCancel>(new
-                    //{
-                    //    CorrelationId = context.Message.CorrelationId
-                    //});
-                })
-                .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
-                {
-                    CorrelationId = context.Message.CorrelationId
-                }))
-                .PublishAsync(context => context.Init<OrderCancel>(new
-                {
-                    CorrelationId = context.Message.CorrelationId
-                }))
-                .Finalize(),
+                        if (context.Saga.AllResponded())
+                        {
+                            context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                        }
+                    }
+                }),
                 When(ShippingConfirmationRefuseEvent)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by shipping.");
+
+                    context.Saga.ShippingResponded = true;
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
@@ -451,15 +507,38 @@ namespace Contact.Models
                     if (order != null)
                     {
                         order.IsConfirmedByShipping = false;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+
+                        if (context.Saga.AllResponded())
+                        {
+                            context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
+                            {
+                                CorrelationId = context.Message.CorrelationId
+                            });
+                        }
+                    }
+                }),
+                When(ContactConfirmationRefusedByAtLeastOnePartyEvent)
+                .Unschedule(ContactOrderConfirmationTimeout)
+                .Then(context =>
+                {
+                    string message = $"Order ID={context.Message.CorrelationId}: " +
+                            $"refused by at least one party.";
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (order != null)
+                    {
                         order.IsCanceled = true;
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
+
+                        message += "\n" + order;
                     }
 
-                    //context.Publish<AccountingInvoiceCancel>(new
-                    //{
-                    //    CorrelationId = context.Message.CorrelationId
-                    //});
+                    Console.WriteLine(message);
                 })
                 .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
                 {
