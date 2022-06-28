@@ -31,7 +31,7 @@ namespace Marketing.Controllers
 
             if (book == null) return NotFound();
 
-            book.discount = request.BookDiscount;
+            book.Discount = request.BookDiscount;
             _bookContext.SaveChanges();
 
             return book;

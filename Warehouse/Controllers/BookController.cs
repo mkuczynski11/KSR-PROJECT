@@ -23,9 +23,14 @@ namespace Warehouse.Controllers
         }
 
         [HttpGet]
-        public IEnumerable<Book> Get()
+        public IEnumerable<Book> GetBooks()
         {
             return _bookContext.BookItems;
+        }
+        [HttpGet("reservations")]
+        public IEnumerable<Reservation> GetReservations()
+        {
+            return _bookContext.ReservationItems;
         }
         [HttpPost("create")]
         public ActionResult<BookResponse> CreateBook([FromBody] BookRequest request)
@@ -61,8 +66,8 @@ namespace Warehouse.Controllers
 
             if (book == null) return NotFound();
             
-            book.name = request.Name;
-            book.quantity = request.Quantity;
+            book.Name = request.Name;
+            book.Quantity = request.Quantity;
 
             _bookContext.SaveChanges();
 

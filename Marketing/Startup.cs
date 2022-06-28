@@ -106,16 +106,21 @@ namespace Marketing
                 double bookDiscount = context.Message.BookDiscount;
 
                 Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(context.Message.BookID));
-
-                if (bookDiscount == book.discount)
+                if (book == null)
                 {
-                    Console.WriteLine($"Discount information is valid.");
-                    await _publishEndpoint.Publish<MarketingConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
+                    Console.WriteLine($"Book with BookID{context.Message.BookID}, discount={bookDiscount} was not found for request={context.Message.CorrelationId}.");
+                    await _publishEndpoint.Publish<MarketingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
+
+                }
+                else if (bookDiscount != book.Discount)
+                {
+                    Console.WriteLine($"Wrong discount for book with BookID{context.Message.BookID}, discount={bookDiscount} for request={context.Message.CorrelationId}.");
+                    await _publishEndpoint.Publish<MarketingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
-                    Console.WriteLine($"Discount information is invalid.");
-                    await _publishEndpoint.Publish<MarketingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
+                    Console.WriteLine($"Book with BookID{context.Message.BookID}, discount={bookDiscount} information is valid.");
+                    await _publishEndpoint.Publish<MarketingConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
         }
