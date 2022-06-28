@@ -61,3 +61,10 @@ services:
       - "80:80"
     depends_on:
       - rabbitmq
+
+  apigateway:
+    build:
+     context: ./
+     dockerfile: ./Dockerfile.ApiGateway
+    ports:
+      - "8080:80"

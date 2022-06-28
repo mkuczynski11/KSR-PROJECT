@@ -1,0 +1,296 @@
+{
+  "ReRoutes": [
+
+    //Contact API
+    {
+      "DownstreamPathTemplate": "/contact/orders/create",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "contact",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 10,
+        "Limit": 1,
+        "HttpStatusCode": 429
+      },
+      "UpstreamPathTemplate": "/api/contact/orders/create",
+      "UpstreamHttpMethod": [ "POST" ]
+    },
+    {
+      "DownstreamPathTemplate": "/contact/orders/{id}/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "contact",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 5,
+        "Limit": 2,
+        "HttpStatusCode": 429
+      },
+      "UpstreamPathTemplate": "/api/contact/orders/{id}/{everything}",
+      "UpstreamHttpMethod": [ "POST" ]
+    },
+    {
+      "DownstreamPathTemplate": "/contact/orders/{id}/status",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "contact",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 10
+      },
+      "UpstreamPathTemplate": "/api/contact/orders/{id}/status",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+
+    //Accounting API
+    {
+      "DownstreamPathTemplate": "/accounting/invoices/{id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "accounting",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 10
+      },
+      "UpstreamPathTemplate": "/api/accounting/invoices/{id}",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/accounting/invoices/{id}/pay",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "accounting",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 5,
+        "Limit": 2,
+        "HttpStatusCode": 429
+      },
+      "UpstreamPathTemplate": "/api/accounting/invoices/{id}/pay",
+      "UpstreamHttpMethod": [ "POST" ]
+    },
+
+    //Marketing API
+    {
+      "DownstreamPathTemplate": "/marketing/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "marketing",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 30
+      },
+      "UpstreamPathTemplate": "/api/marketing/books",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/marketing/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "marketing",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/marketing/books",
+      "UpstreamHttpMethod": [ "PUT" ]
+    },
+
+    //Sales API
+    {
+      "DownstreamPathTemplate": "/sales/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "sales",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 30
+      },
+      "UpstreamPathTemplate": "/api/sales/books",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/sales/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "sales",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/sales/books",
+      "UpstreamHttpMethod": [ "PUT" ]
+    },
+
+    //Shipping API
+    {
+      "DownstreamPathTemplate": "/shipping/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "shipping",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 30
+      },
+      "UpstreamPathTemplate": "/api/shipping/{everything}",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/shipping/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "shipping",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/shipping/{everything}",
+      "UpstreamHttpMethod": [ "PUT", "POST", "DELETE" ]
+    },
+
+    //Warehouse API
+    {
+      "DownstreamPathTemplate": "/warehouse/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "warehouse",
+          "Port": "80"
+        }
+      ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [
+
+        ],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 30
+      },
+      "UpstreamPathTemplate": "/api/warehouse/books",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/warehouse/books",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "warehouse",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/warehouse/books",
+      "UpstreamHttpMethod": [ "PUT" ]
+    },
+    {
+      "DownstreamPathTemplate": "/warehouse/books/create",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "warehouse",
+          "Port": "80"
+        }
+      ],
+      "UpstreamPathTemplate": "/api/warehouse/books/create",
+      "UpstreamHttpMethod": [ "POST" ]
+    }
+  ],
+
+  "GlobalConfiguration": {
+    
+  }
+}

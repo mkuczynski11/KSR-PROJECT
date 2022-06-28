@@ -291,7 +291,8 @@ namespace Contact.Models
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
 
-                    string message = $"Order ID={context.Message.OrderId}: ";
+                    string message = $"Order ID={context.Message.OrderId}: " +
+                        $"confirmation time expired.";
 
                     if (order != null)
                     {
