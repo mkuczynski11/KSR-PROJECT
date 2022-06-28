@@ -46,6 +46,7 @@ namespace Contact
                     });
                     cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
                     {
+                        ep.UseInMemoryOutbox();
                         ep.ConfigureSaga<OrderSagaData>(context);
                     });
                     cfg.UseInMemoryScheduler();

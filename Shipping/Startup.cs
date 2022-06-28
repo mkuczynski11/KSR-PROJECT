@@ -53,12 +53,14 @@ namespace Shipping
 
                     cfg.ReceiveEndpoint("shipping-saga-queue", ep =>
                     {
+                        ep.UseInMemoryOutbox();
                         ep.ConfigureSaga<DeliveryState>(context);
                     });
                     cfg.UseInMemoryScheduler();
 
                     cfg.ReceiveEndpoint("shipping-delivery-confirmation-request-event", ep =>
                     {
+                        ep.UseInMemoryOutbox();
                         ep.ConfigureConsumer<ShippingConfirmationConsumer>(context);
                     });
 

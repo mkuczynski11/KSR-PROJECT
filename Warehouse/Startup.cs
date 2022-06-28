@@ -44,10 +44,12 @@ namespace Warehouse
 
                     cfg.ReceiveEndpoint("warehouse-delivery-request-event", ep =>
                     {
+                        ep.UseInMemoryOutbox();
                         ep.ConfigureConsumer<WarehouseDeliveryRequestConsumer>(context);
                     });
                     cfg.ReceiveEndpoint("warehouse-quantity-confirmation-request-event", ep =>
                     {
+                        ep.UseInMemoryOutbox();
                         ep.ConfigureConsumer<WarehouseConfirmationConsumer>(context);
                     });
                     cfg.ReceiveEndpoint("warehouse-order-cancel-event", ep =>

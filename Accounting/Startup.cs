@@ -46,6 +46,7 @@ namespace Accounting
                     });
                     cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
                     {
+                        ep.UseInMemoryOutbox();
                         ep.ConfigureSaga<InvoiceSagaData>(context);
                     });
                     cfg.UseInMemoryScheduler();

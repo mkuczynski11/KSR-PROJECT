@@ -65,6 +65,7 @@ namespace Marketing
 
                     cfg.ReceiveEndpoint("marketing-book-confirmation-event", ep =>
                     {
+                        ep.UseInMemoryOutbox();
                         ep.ConfigureConsumer<MarketingConfirmationConsumer>(context);
                     });
                 });

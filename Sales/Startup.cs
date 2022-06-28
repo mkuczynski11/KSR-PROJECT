@@ -65,6 +65,7 @@ namespace Sales
 
                     cfg.ReceiveEndpoint("sales-book-confirmation-event", ep =>
                     {
+                        ep.UseInMemoryOutbox();
                         ep.ConfigureConsumer<SalesConfirmationConsumer>(context);
                     });
                 });
