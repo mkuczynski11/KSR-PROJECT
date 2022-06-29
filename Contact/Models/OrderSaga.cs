@@ -4,9 +4,8 @@ using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Contact.Models
 {
@@ -39,6 +38,7 @@ namespace Contact.Models
 
     public class OrderSaga : MassTransitStateMachine<OrderSagaData>, IDisposable
     {
+        private readonly ILogger<OrderSaga> _logger;
         private readonly IServiceScope _scope;
 
         public State AwaitingClientConfirmation { get; private set; }
@@ -75,8 +75,9 @@ namespace Contact.Models
         public Schedule<OrderSagaData, ContactOrderPaymentTimeoutExpired> ContactOrderPaymentTimeout { get; private set; }
         public Schedule<OrderSagaData, ContactShipmentTimeoutExpired> ContactShipmentTimeout { get; private set; }
 
-        public OrderSaga(IServiceProvider services, IConfiguration configuration)
+        public OrderSaga(IServiceProvider services, ILogger<OrderSaga> logger, IConfiguration configuration)
         {
+            _logger = logger;
             _scope = services.CreateScope();
 
             var sagaConfiguration = configuration.GetSection("OrderSaga").Get<OrderSagaConfiguration>();
@@ -108,7 +109,7 @@ namespace Contact.Models
                 When(OrderStartEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Started new order saga: ID={context.Message.CorrelationId}, " +
+                    _logger.LogInformation($"Started new order saga: ID={context.Message.CorrelationId}, " +
                         $"sending confirmation requests to all parties.");
 
                     context.Saga.DeliveryMethod = context.Message.DeliveryMethod;
@@ -198,7 +199,7 @@ namespace Contact.Models
                 .Unschedule(ContactOrderClientConfirmationTimeout)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by client.");
 
                     context.Saga.ClientResponded = true;
@@ -254,7 +255,7 @@ namespace Contact.Models
                 When(WarehouseConfirmationAcceptEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"received warehouse confirmation.");
 
                     context.Saga.WarehouseResponded = true;
@@ -294,7 +295,7 @@ namespace Contact.Models
                 When(SalesConfirmationAcceptEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"received sales confirmation.");
 
                     context.Saga.SalesResponded = true;
@@ -334,7 +335,7 @@ namespace Contact.Models
                 When(MarketingConfirmationAcceptEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"received marketing confirmation.");
 
                     context.Saga.MarketingResponded = true;
@@ -374,7 +375,7 @@ namespace Contact.Models
                 When(ShippingConfirmationAcceptEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"received shipping confirmation.");
 
                     context.Saga.ShippingResponded = true;
@@ -415,7 +416,7 @@ namespace Contact.Models
                 .Unschedule(ContactOrderServicesConfirmationTimeout)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"confirmed by all parties.");
                 })
                 .Schedule(ContactOrderPaymentTimeout, context => context.Init<ContactOrderPaymentTimeoutExpired>(new
@@ -443,7 +444,7 @@ namespace Contact.Models
                         message += "\n" + order;
                     }
 
-                    Console.WriteLine(message);
+                    _logger.LogError(message);
                 })
                 .PublishAsync(context => context.Init<AccountingInvoiceCancel>(new
                 {
@@ -458,7 +459,7 @@ namespace Contact.Models
                 When(WarehouseConfirmationRefuseEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogError($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by warehouse.");
 
                     context.Saga.WarehouseResponded = true;
@@ -484,7 +485,7 @@ namespace Contact.Models
                 When(SalesConfirmationRefuseEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogError($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by sales.");
 
                     context.Saga.SalesResponded = true;
@@ -510,7 +511,7 @@ namespace Contact.Models
                 When(MarketingConfirmationRefuseEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogError($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by marketing.");
 
                     context.Saga.MarketingResponded = true;
@@ -536,7 +537,7 @@ namespace Contact.Models
                 When(ShippingConfirmationRefuseEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogError($"Order ID={context.Message.CorrelationId}: " +
                             $"canceled by shipping.");
 
                     context.Saga.ShippingResponded = true;
@@ -596,7 +597,7 @@ namespace Contact.Models
                 .Unschedule(ContactOrderPaymentTimeout)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"has been paid by client.");
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
@@ -627,7 +628,7 @@ namespace Contact.Models
                 .Unschedule(ContactOrderPaymentTimeout)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"has not been paid by client.");
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
@@ -675,7 +676,7 @@ namespace Contact.Models
                 .Unschedule(ContactShipmentTimeout)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"has been shipped to client.");
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
@@ -694,7 +695,7 @@ namespace Contact.Models
                 .Unschedule(ContactShipmentTimeout)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                    _logger.LogError($"Order ID={context.Message.CorrelationId}: " +
                             $"could not be shipped to client.");
 
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();

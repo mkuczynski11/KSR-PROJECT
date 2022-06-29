@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace Accounting.Models
 {
@@ -17,6 +18,7 @@ namespace Accounting.Models
 
     public class InvoiceSaga : MassTransitStateMachine<InvoiceSagaData>, IDisposable
     {
+        private readonly ILogger<InvoiceSaga> _logger;
         private readonly IServiceScope _scope;
 
         public State AwaitingPublishing { get; private set; }
@@ -30,8 +32,9 @@ namespace Accounting.Models
         public Schedule<InvoiceSagaData, AccountingInvoicePaymentTimeoutExpired> AccountingInvoicePaymentTimeout { get; private set; }
 
 
-        public InvoiceSaga(IServiceProvider services, IConfiguration configuration)
+        public InvoiceSaga(IServiceProvider services, IConfiguration configuration, ILogger<InvoiceSaga> logger)
         {
+            _logger = logger;
             _scope = services.CreateScope();
 
             var sagaConfiguration = configuration.GetSection("InvoiceSaga").Get<InvoiceSagaConfiguration>();
@@ -48,7 +51,7 @@ namespace Accounting.Models
                 When(AccountingInvoiceStartEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}, preparing invoice.");
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}, preparing invoice.");
 
                     Invoice invoice = new Invoice(context.Message.CorrelationId.ToString(),
                         context.Message.BookID,
@@ -70,7 +73,7 @@ namespace Accounting.Models
                 When(AccountingInvoicePublishEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}, publishing invoice.");
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}, publishing invoice.");
 
                     var invoices = _scope.ServiceProvider.GetRequiredService<InvoiceContext>();
                     Invoice invoice = invoices.InvoiceItems
@@ -90,7 +93,7 @@ namespace Accounting.Models
                 When(AccountingInvoiceCancelEvent)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}, publishing invoice canceled.");
+                    logger.LogError($"Order ID={context.Message.CorrelationId}, publishing invoice canceled.");
 
                     var invoices = _scope.ServiceProvider.GetRequiredService<InvoiceContext>();
                     Invoice invoice = invoices.InvoiceItems
@@ -110,14 +113,14 @@ namespace Accounting.Models
                 .Unschedule(AccountingInvoicePaymentTimeout)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}, invoice paid.");
+                    _logger.LogInformation($"Order ID={context.Message.CorrelationId}, invoice paid.");
                 })
                 .Finalize(),
 
                 When(AccountingInvoicePaymentTimeout.Received)
                 .Then(context =>
                 {
-                    Console.WriteLine($"Order ID={context.Message.InvoiceId}, payment time expired.");
+                    _logger.LogError($"Order ID={context.Message.InvoiceId}, payment time expired.");
 
                     var invoices = _scope.ServiceProvider.GetRequiredService<InvoiceContext>();
                     Invoice invoice = invoices.InvoiceItems

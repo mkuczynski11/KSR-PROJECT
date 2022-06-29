@@ -2,11 +2,10 @@
 using Contact.Models;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
 
 namespace Contact.Controllers
 {
@@ -14,11 +13,13 @@ namespace Contact.Controllers
     [Route("[controller]")]
     public class ContactController : ControllerBase
     {
+        private readonly ILogger<ContactController> _logger;
         private readonly OrderContext _orderContext;
         public readonly IPublishEndpoint _publishEndpoint;
 
-        public ContactController(IPublishEndpoint publishEndpoint, OrderContext orderContext)
+        public ContactController(IPublishEndpoint publishEndpoint, OrderContext orderContext, ILogger<ContactController> logger)
         {
+            _logger = logger;
             _orderContext = orderContext;
             _publishEndpoint = publishEndpoint;
         }
@@ -26,7 +27,7 @@ namespace Contact.Controllers
         [HttpPost("orders/create")]
         public ActionResult<OrderCreateResponse> StartOrder([FromBody] OrderCreateRequest request)
         {
-            Console.WriteLine($"New Order: data={request}");
+            _logger.LogInformation($"New Order: data={request}");
             Guid ID = Guid.NewGuid();
 
             Order order = new Order(ID.ToString());
@@ -80,7 +81,7 @@ namespace Contact.Controllers
         [HttpGet("orders/{id}/status")]
         public ActionResult<OrderStatusResponse> GetStatus(string id)
         {
-            Console.WriteLine($"Order status with ID:{id} requested");
+            _logger.LogInformation($"Order status with ID:{id} requested");
             Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
             if (order == null) return NotFound();
 

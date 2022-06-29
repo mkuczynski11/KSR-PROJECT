@@ -4,6 +4,8 @@ using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
+
 
 namespace Contact.Controllers
 {
@@ -11,11 +13,13 @@ namespace Contact.Controllers
     [Route("contact/admin")]
     public class ContactAdminController : ControllerBase
     {
+        private readonly ILogger<ContactAdminController> _logger;
         private readonly OrderContext _orderContext;
         public readonly IPublishEndpoint _publishEndpoint;
 
-        public ContactAdminController(IPublishEndpoint publishEndpoint, OrderContext orderContext)
+        public ContactAdminController(IPublishEndpoint publishEndpoint, OrderContext orderContext, ILogger<ContactAdminController> logger)
         {
+            _logger = logger;
             _orderContext = orderContext;
             _publishEndpoint = publishEndpoint;
         }
