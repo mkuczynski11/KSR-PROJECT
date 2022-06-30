@@ -110,8 +110,6 @@ namespace Shipping
 
         public class DeliveryStateMachine : MassTransitStateMachine<DeliveryState>, IDisposable
         {
-            public const int WarehouseDeliveryConfirmationTimeoutSeconds = 10;
-
             private readonly IServiceScope _scope;
 
             public State RequestSend { get; private set; }
@@ -124,15 +122,17 @@ namespace Shipping
 
             public Schedule<DeliveryState, ShippingWarehouseDeliveryConfirmationTimeoutExpired> ShippingWarehouseDeliveryConfirmationTimeout { get; private set; }
 
-            public DeliveryStateMachine(IServiceProvider services)
+            public DeliveryStateMachine(IServiceProvider services, IConfiguration configuration)
             {
                 _scope = services.CreateScope();
+
+                var sagaConfiguration = configuration.GetSection("ShippingSaga").Get<ShippingSagaConfiguration>();
 
                 InstanceState(x => x.CurrentState);
 
                 Schedule(() => ShippingWarehouseDeliveryConfirmationTimeout, instance => instance.ShippingWarehouseDeliveryConfirmationTimeoutId, s =>
                 {
-                    s.Delay = TimeSpan.FromSeconds(WarehouseDeliveryConfirmationTimeoutSeconds);
+                    s.Delay = TimeSpan.FromSeconds(sagaConfiguration.WarehouseDeliveryConfirmationTimeoutSeconds);
                     s.Received = r => r.CorrelateById(context => context.Message.ShippingId);
                 });
 
