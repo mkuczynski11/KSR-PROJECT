@@ -45,6 +45,8 @@ namespace ApiGateway
 
             app.UseRouting();
 
+            app.UseCors("CorsPolicy");
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
