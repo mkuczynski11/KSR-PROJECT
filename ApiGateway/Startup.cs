@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Ocelot.Cache.CacheManager;
+using Microsoft.AspNetCore.Cors;
 
 namespace ApiGateway
 {
@@ -27,6 +28,14 @@ namespace ApiGateway
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors(options =>
+            {
+                options.AddPolicy("CorsPolicy",
+                    builder => builder.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials());
+            });
             services.AddOcelot().AddCacheManager(settings =>
                 settings.WithDictionaryHandle()
             );
@@ -40,6 +49,8 @@ namespace ApiGateway
             }
 
             app.UseRouting();
+
+            app.UseCors("CorsPolicy");
 
             app.UseEndpoints(endpoints =>
             {
