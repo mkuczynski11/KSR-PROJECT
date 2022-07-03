@@ -28,6 +28,7 @@ namespace Accounting
         public void ConfigureServices(IServiceCollection services)
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
+            var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
 
             services.AddMassTransit(x =>
             {
@@ -44,7 +45,7 @@ namespace Accounting
                         hostConfigurator.Username(rabbitConfiguration.Username);
                         hostConfigurator.Password(rabbitConfiguration.Password);
                     });
-                    cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.InvoiceSaga, ep =>
                     {
                         ep.ConfigureSaga<InvoiceSagaData>(context);
                     });

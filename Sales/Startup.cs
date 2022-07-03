@@ -41,10 +41,10 @@ namespace Sales
             }
         }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
+            var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
 
             services.AddMassTransit(x =>
             {
@@ -58,12 +58,12 @@ namespace Sales
                         settings.Password(rabbitConfiguration.Password);
                     });
 
-                    cfg.ReceiveEndpoint("sales-book-creation-event", ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.NewBookConsumer, ep =>
                     {
                         ep.ConfigureConsumer<NewBookSalesInfoConsumer>(context);
                     });
 
-                    cfg.ReceiveEndpoint("sales-book-confirmation-event", ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.ConfirmationConsumer, ep =>
                     {
                         ep.ConfigureConsumer<SalesConfirmationConsumer>(context);
                     });
@@ -74,7 +74,6 @@ namespace Sales
             services.AddControllers();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())

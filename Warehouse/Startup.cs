@@ -24,10 +24,10 @@ namespace Warehouse
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
+            var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
 
             services.AddMassTransit(x =>
             {
@@ -42,15 +42,15 @@ namespace Warehouse
                         settings.Password(rabbitConfiguration.Password);
                     });
 
-                    cfg.ReceiveEndpoint("warehouse-delivery-request-event", ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.DeliveryRequestConsumer, ep =>
                     {
                         ep.ConfigureConsumer<WarehouseDeliveryRequestConsumer>(context);
                     });
-                    cfg.ReceiveEndpoint("warehouse-quantity-confirmation-request-event", ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.ConfirmationConsumer, ep =>
                     {
                         ep.ConfigureConsumer<WarehouseConfirmationConsumer>(context);
                     });
-                    cfg.ReceiveEndpoint("warehouse-order-cancel-event", ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.OrderCancelConsumer, ep =>
                     {
                         ep.ConfigureConsumer<OrderCancelConsumer>(context);
                     });
@@ -61,7 +61,6 @@ namespace Warehouse
             services.AddControllers();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
