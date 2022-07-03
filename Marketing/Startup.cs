@@ -60,14 +60,18 @@ namespace Marketing
 
                     cfg.ReceiveEndpoint("marketing-book-creation-event", ep =>
                     {
+                        ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureConsumer<NewBookMarketingInfoConsumer>(context);
                     });
 
                     cfg.ReceiveEndpoint("marketing-book-confirmation-event", ep =>
                     {
                         ep.UseInMemoryOutbox();
+                        ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureConsumer<MarketingConfirmationConsumer>(context);
                     });
+
+                    cfg.UseDelayedRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
                 });
             });
 

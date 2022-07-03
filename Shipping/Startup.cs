@@ -54,6 +54,7 @@ namespace Shipping
                     cfg.ReceiveEndpoint("shipping-saga-queue", ep =>
                     {
                         ep.UseInMemoryOutbox();
+                        ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureSaga<DeliveryState>(context);
                     });
                     cfg.UseInMemoryScheduler();
@@ -61,8 +62,11 @@ namespace Shipping
                     cfg.ReceiveEndpoint("shipping-delivery-confirmation-request-event", ep =>
                     {
                         ep.UseInMemoryOutbox();
+                        ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureConsumer<ShippingConfirmationConsumer>(context);
                     });
+
+                    cfg.UseDelayedRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
 
                 });
             });

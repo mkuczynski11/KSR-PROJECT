@@ -45,17 +45,22 @@ namespace Warehouse
                     cfg.ReceiveEndpoint("warehouse-delivery-request-event", ep =>
                     {
                         ep.UseInMemoryOutbox();
+                        ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureConsumer<WarehouseDeliveryRequestConsumer>(context);
                     });
                     cfg.ReceiveEndpoint("warehouse-quantity-confirmation-request-event", ep =>
                     {
                         ep.UseInMemoryOutbox();
+                        ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureConsumer<WarehouseConfirmationConsumer>(context);
                     });
                     cfg.ReceiveEndpoint("warehouse-order-cancel-event", ep =>
                     {
+                        ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureConsumer<OrderCancelConsumer>(context);
                     });
+
+                    cfg.UseDelayedRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
                 });
             });
 
