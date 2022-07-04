@@ -24,8 +24,8 @@
           <template #cell(quantity)="data">
             {{ data.item.quantity }}
           </template>
-          <template #cell(price)="data">
-            {{ data.item.price }}
+          <template #cell(totalPrice)="data">
+            {{ data.item.totalPrice }}
           </template>
           <template #cell(confirm)="data">
             <b-button
@@ -66,6 +66,22 @@
           {{ currentPrice }}
         </b-col>
       </b-row>
+      <b-row class="pt-2">
+        <b-col cols="6">
+          <b>Discount when ordered</b>
+        </b-col>
+        <b-col cols="6">
+          <b>Current discount</b>
+        </b-col>
+      </b-row>
+      <b-row>
+        <b-col cols="6" v-if="orderToConfirm">
+          {{ orderToConfirm.discount }}
+        </b-col>
+        <b-col cols="6" v-if="currentDiscountLoaded">
+          {{ currentDiscount }}
+        </b-col>
+      </b-row>
       <template #modal-footer="{}">
         <b-button variant="danger" @click="closeOrderConfirmationForm()">
           Cancel
@@ -82,9 +98,9 @@
 </template>
 
 <script>
-import { getBook } from "@/api/api.js";
+import {getOrderStatus, getBooksPrices, getBooksDiscounts, confirmOrder} from "@/api/api.js";
 
-const ORDER_FIELDS = ["ID", "bookName", "quantity", "price", "confirm"];
+const ORDER_FIELDS = ["ID", "bookName", "quantity", "totalPrice", "status", "confirm"];
 
 export default {
   name: "Orders",
@@ -100,6 +116,7 @@ export default {
       orderToConfirm: null,
       currentPrice: null,
       currentPriceLoaded: false,
+      currentDiscountLoaded: false,
     };
   },
 
@@ -108,28 +125,46 @@ export default {
   },
 
   methods: {
-    parseOrders() {
+    async parseOrders() {
       this.ordersLoaded = false;
       this.orders = this.$orders;
       this.items = [];
 
       for (let order of this.orders) {
+        let statusReq = await getOrderStatus(order.orderId);
         let parsed_order = {
-          id: order.book.id,
+          id: order.orderId,
           bookName: order.book.name,
+          bookId: order.book.id,
           quantity: order.quantity,
-          price: order.quantity * 45, // TODO: get price from book
-          unitPrice: 45,              // TODO: get price !!!!
+          totalPrice: order.quantity * order.book.unitPrice,
+          unitPrice: order.book.unitPrice,
+          discount: order.book.discount,
+          status: statusReq.status
         };
         this.items.push(JSON.parse(JSON.stringify(parsed_order)));
       }
 
       this.ordersLoaded = true;
+      this.watchForStatusChange();
+    },
+
+    watchForStatusChange() {
+      setInterval(() => {
+        for (let order of this.orders) {
+          getOrderStatus(order.orderId).then(status => {
+            let index = this.orders.indexOf(order);
+            this.items[index].status = status.status;
+          });
+        }
+      }, 3000);
     },
 
     async openOrderConfirmationForm(order) {
       this.orderToConfirm = order;
-      await this.loadCurrentPrice(order.id);
+      await this.loadCurrentPrice(order.bookId);
+      await this.loadCurrentDiscount(order.bookId);
+
       this.$bvModal.show("confirm-order-modal");
     },
 
@@ -144,19 +179,39 @@ export default {
 
     async loadCurrentPrice(bookId) {
       this.currentPriceLoaded = false;
-      // let res = await getBook(bookId);
-      // this.currentPrice = res.price;
-      this.currentPrice = 45; // TODO: GET CURRENT PRICE
+
+      let prices = await getBooksPrices();
+      this.currentPrice = prices.find(price => price.id === bookId).price;
       this.currentPriceLoaded = true;
-      console.log(this.currentPrice);
     },
 
-    confirmOrder() {
+    async loadCurrentDiscount(bookId) {
+      this.currentDiscountLoaded = false;
+
+      let prices = await getBooksDiscounts();
+      this.currentDiscount = prices.find(d => d.id === bookId).discount;
+      this.currentDiscountLoaded = true;
+    },
+
+    async confirmOrder() {
       // TODO: Add logic about confirming order
-      this.$confirmedOrders.push({
-        'book': this.bookToReserve,
-        'quantity': parseInt(this.form.quantity),
-      })
+
+      let res = await confirmOrder(this.orderToConfirm);
+
+      if (res.status === 200) {
+        this.$confirmedOrders.push(this.orderToConfirm);
+        this.$bvToast.toast(`Successfully confirmed order!`, {
+          title: "Order confirmation",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      } else {
+        this.$bvToast.toast(`Failed to confirm order!`, {
+          title: "Order confirmation",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      }
 
       this.closeOrderConfirmationForm();
     },
