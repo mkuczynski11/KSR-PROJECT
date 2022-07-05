@@ -5,12 +5,9 @@ using System.Threading.Tasks;
 
 namespace Shipping.Models
 {
-    public class PriceRequest
-    {
-        public double Price { get; set; }
-    }
     public class MethodRequest
     {
         public string Method { get; set; }
+        public double Price { get; set; }
     }
 }

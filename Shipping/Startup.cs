@@ -91,16 +91,13 @@ namespace Shipping
 
         private static void AddShippingData(ShippingContext context)
         {
-            var price = new Price("base", 10.0);
-            context.PriceItems.Add(price);
-
-            var dpdMethod = new Method("DPD");
+            var dpdMethod = new Method("DPD", 10.0);
             context.MethodItems.Add(dpdMethod);
 
-            var ppMethod = new Method("Poczta polska");
+            var ppMethod = new Method("Poczta polska", 13.0);
             context.MethodItems.Add(ppMethod);
 
-            var ooMethod = new Method("Odbiór osobisty");
+            var ooMethod = new Method("Odbiór osobisty", 0.0);
             context.MethodItems.Add(ooMethod);
 
             context.SaveChanges();
@@ -216,15 +213,9 @@ namespace Shipping
                 var deliveryPrice = context.Message.DeliveryPrice;
                 var deliveryMethod = context.Message.DeliveryMethod;
 
-                Price price = _shippingContext.PriceItems.SingleOrDefault(b => b.PriceValue.Equals(deliveryPrice));
                 Method method = _shippingContext.MethodItems.SingleOrDefault(b => b.MethodValue.Equals(deliveryMethod));
 
-                if (price == null )
-                {
-                    Console.WriteLine($"Price={deliveryPrice} was invalid for request {context.Message.CorrelationId}.");
-                    await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
-                }
-                else if (method == null)
+                if (method == null)
                 {
                     Console.WriteLine($"Method={deliveryMethod} was invalid for request {context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });

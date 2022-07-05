@@ -10,12 +10,14 @@ namespace Shipping.Models
     {
         [Key]
         public string MethodValue { get; set; }
+        public double Price { get; set; }
 
         public Method() { }
         
-        public Method(string method)
+        public Method(string method, double price)
         {
             this.MethodValue = method;
+            this.Price = price;
         }
     }
 }

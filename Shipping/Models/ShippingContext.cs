@@ -11,8 +11,6 @@ namespace Shipping.Models
         public ShippingContext(DbContextOptions<ShippingContext> options) : base(options)
         { 
         }
-
-        public DbSet<Price> PriceItems { get; set; }
         public DbSet<Method> MethodItems { get; set; }
         public DbSet<Shipment> ShipmentItems { get; set; }
     }
