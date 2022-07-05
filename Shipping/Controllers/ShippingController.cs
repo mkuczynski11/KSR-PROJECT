@@ -21,12 +21,6 @@ namespace Shipping.Controllers
             _shippingContext = shippingContext;
             _publishEndpoint = publishEndpoint;
         }
-
-        [HttpGet("price")]
-        public IEnumerable<Price> GetPrice()
-        {
-            return _shippingContext.PriceItems;
-        }
         [HttpGet("methods")]
         public IEnumerable<Method> GetMethods()
         {
@@ -37,22 +31,10 @@ namespace Shipping.Controllers
         {
             return _shippingContext.ShipmentItems;
         }
-        [HttpPut("price")]
-        public ActionResult<Price> PutPrice([FromBody] PriceRequest request)
-        {
-            Price price = _shippingContext.PriceItems.SingleOrDefault(p => p.ID.Equals("base"));
-
-            if (price == null) return NotFound();
-
-            price.PriceValue = request.Price;
-            _shippingContext.SaveChanges();
-
-            return price;
-        }
         [HttpPost("methods")]
         public ActionResult<Method> PutMethod([FromBody] MethodRequest request)
         {
-            Method method = new Method(request.Method);
+            Method method = new Method(request.Method, request.Price);
 
             _shippingContext.MethodItems.Add(method);
             _shippingContext.SaveChanges();
