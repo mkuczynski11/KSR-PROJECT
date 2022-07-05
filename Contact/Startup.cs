@@ -28,6 +28,7 @@ namespace Contact
         public void ConfigureServices(IServiceCollection services)
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
+            var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
 
             services.AddMassTransit(x =>
             {
@@ -44,7 +45,7 @@ namespace Contact
                         hostConfigurator.Username(rabbitConfiguration.Username);
                         hostConfigurator.Password(rabbitConfiguration.Password);
                     });
-                    cfg.ReceiveEndpoint(rabbitConfiguration.ReceiveEndpoint, ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.OrderSaga, ep =>
                     {
                         ep.ConfigureSaga<OrderSagaData>(context);
                     });

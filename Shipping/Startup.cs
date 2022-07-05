@@ -29,10 +29,10 @@ namespace Shipping
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
+            var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
 
             services.AddMassTransit(x =>
             {
@@ -51,13 +51,13 @@ namespace Shipping
                         settings.Password(rabbitConfiguration.Password);
                     });
 
-                    cfg.ReceiveEndpoint("shipping-saga-queue", ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.ShippingSaga, ep =>
                     {
                         ep.ConfigureSaga<DeliveryState>(context);
                     });
                     cfg.UseInMemoryScheduler();
 
-                    cfg.ReceiveEndpoint("shipping-delivery-confirmation-request-event", ep =>
+                    cfg.ReceiveEndpoint(endpointConfiguration.ConfirmationConsumer, ep =>
                     {
                         ep.ConfigureConsumer<ShippingConfirmationConsumer>(context);
                     });
@@ -69,7 +69,6 @@ namespace Shipping
             services.AddControllers();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ShippingContext shippingContext)
         {
             AddShippingData(shippingContext);
