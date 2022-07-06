@@ -8,11 +8,6 @@ using System.Linq;
 
 namespace Accounting.Models
 {
-    public interface AccountingInvoicePaymentTimeoutExpired 
-    { 
-        Guid InvoiceId { get; }
-    }
-
     public class InvoiceSagaData : SagaStateMachineInstance
     {
         public Guid CorrelationId { get; set; }

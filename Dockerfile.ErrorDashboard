@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/aspnet:3.1 AS base
+WORKDIR /app
+
+FROM mcr.microsoft.com/dotnet/sdk:3.1 AS build
+WORKDIR /src
+
+COPY ["ErrorDashboard/ErrorDashboard.csproj", "ErrorDashboard/"]
+COPY ["Common/Common.csproj", "Common/"]
+RUN dotnet restore "ErrorDashboard/ErrorDashboard.csproj"
+COPY . .
+WORKDIR "/src/ErrorDashboard"
+RUN dotnet build "ErrorDashboard.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "ErrorDashboard.csproj" -c Release -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "ErrorDashboard.dll"]

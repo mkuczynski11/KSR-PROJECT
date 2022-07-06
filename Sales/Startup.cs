@@ -71,7 +71,8 @@ namespace Sales
                         ep.ConfigureConsumer<SalesConfirmationConsumer>(context);
                     });
 
-                    cfg.UseDelayedRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
+                    cfg.UseScheduledRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
+                    cfg.UseInMemoryScheduler();
                 });
             });
 

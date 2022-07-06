@@ -50,7 +50,7 @@ namespace Accounting
                         ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureSaga<InvoiceSagaData>(context);
                     });
-                    cfg.UseDelayedRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
+                    cfg.UseScheduledRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
                     cfg.UseInMemoryScheduler();
                 });
             });

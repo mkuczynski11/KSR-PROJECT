@@ -10,21 +10,7 @@ using System.Threading.Tasks;
 
 namespace Contact.Models
 {
-    public interface ContactOrderConfirmationTimeoutExpired
-    {
-        Guid OrderId { get; }
-    }
-    public interface ContactOrderPaymentTimeoutExpired
-    {
-        Guid OrderId { get; }
-    }
-    public interface ContactShipmentTimeoutExpired
-    {
-        Guid OrderId { get; }
-    }
-
-    public interface ContactConfirmationConfirmedByAllParties : CorrelatedBy<Guid> { }
-    public interface ContactConfirmationRefusedByAtLeastOneParty : CorrelatedBy<Guid> { }
+    
 
     public class OrderSagaData : SagaStateMachineInstance
     {

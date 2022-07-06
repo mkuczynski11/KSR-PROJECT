@@ -15,11 +15,6 @@ using System.Threading.Tasks;
 
 namespace Shipping
 {
-    public interface ShippingWarehouseDeliveryConfirmationTimeoutExpired
-    {
-        Guid ShippingId { get; }
-    }
-
     public class Startup
     {
         public Startup(IConfiguration configuration)
@@ -66,8 +61,8 @@ namespace Shipping
                         ep.ConfigureConsumer<ShippingConfirmationConsumer>(context);
                     });
 
-                    cfg.UseDelayedRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
-
+                    cfg.UseScheduledRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
+                    cfg.UseInMemoryScheduler();
                 });
             });
 
