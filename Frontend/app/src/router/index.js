@@ -1,9 +1,9 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
 import Home from '@/views/Home.vue';
-import Cars from '@/views/CarsView.vue';
 import Books from '@/views/Books.vue';
 import Orders from '@/views/Orders.vue';
+import Invoices from '@/views/Invoices.vue';
 
 Vue.use(VueRouter)
 
@@ -24,9 +24,9 @@ const routes = [
     component: Orders
   },
   {
-    path: '/cars',
-    name: 'Cars',
-    component: Cars
+    path: '/invoices',
+    name: 'Faktury',
+    component: Invoices
   },
 ]
 

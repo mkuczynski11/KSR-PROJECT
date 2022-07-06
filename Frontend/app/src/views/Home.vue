@@ -5,11 +5,11 @@
         <b-col cols="2"></b-col>
         <b-col cols="8">
           <b-card>
-            <h4>Welcome to my Internet Services Architectures project!</h4>
+            <h4>Welcome to our Library!</h4>
             <hr/>
-            <h5>In the <i>Users</i> tab You may find list of users served by the Java Spring backend at <b>localhost:8080/api/users/</b>.</h5>
-            <h5><i>Cars</i> tab works in the same way but with cars (quite obvious)</h5>
-            <h5>Feel free to test out some features like creating new objects and have fun!</h5>
+            <h5>In the <i>Książki</i> tab You may find list of all the books available for purchase.</h5>
+            <h5><i>Zamówienia</i> tab contains all the orders placed in the previous tab, with some most important info about them.</h5>
+            <h5>In the last tab <i>Faktury</i> You may find invoices for only the confirmed orders, regardless of whether they were paid or not.</h5>
           </b-card>
         </b-col>
         <b-col cols="2"></b-col>

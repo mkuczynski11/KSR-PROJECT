@@ -1,15 +1,10 @@
 <template>
   <b-container>
-    <b-row>
-      <b-col cols="5" />
-      <b-col cols="2"> </b-col>
-      <b-col cols="5" />
-    </b-row>
     <b-row v-if="booksLoaded" class="py-4">
-      <b-col cols="3"></b-col>
+      <b-col cols="1"></b-col>
       <b-col>
         <b-table
-          cols="6"
+          cols="10"
           v-if="booksLoaded"
           :fields="fields"
           :items="items"
@@ -33,7 +28,7 @@
           </template>
         </b-table>
       </b-col>
-      <b-col cols="3"></b-col>
+      <b-col cols="1"></b-col>
     </b-row>
     <b-row v-else>
       <b-col cols="12" class="py-4">

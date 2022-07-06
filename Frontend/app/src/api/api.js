@@ -123,6 +123,24 @@ export async function confirmOrder(order) {
   return res;
 }
 
+export async function cancelOrder(order) {
+  console.log(`Cancelling order ${order.id} ${API_URL}`);
+  let res = await axios
+    .post(
+      `${API_URL}/contact/orders/${order.id}/cancel`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response;
+    });
+  return res;
+}
+
 export async function getOrderStatus(id) {
   console.log(`Fetching order ${id} status from ${API_URL}`);
   let res = await axios
@@ -134,6 +152,24 @@ export async function getOrderStatus(id) {
     });
   console.log(res);
   return res.data;
+}
+
+export async function payInvoice(invoice) {
+  console.log(`Paying for invoice ${invoice.id} ${API_URL}`);
+  let res = await axios
+    .post(
+      `${API_URL}/accounting/invoices/${invoice.id}/pay`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response;
+    });
+  return res;
 }
 
 export async function getUserCars(user) {
@@ -218,7 +254,10 @@ const api = {
   getShippingMethods,
   getShippingPrices,
   createOrder,
+  confirmOrder,
+  cancelOrder,
   getOrderStatus,
+  payInvoice,
   getUserCars,
   deleteUser,
 };

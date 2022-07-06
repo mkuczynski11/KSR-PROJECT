@@ -30,8 +30,8 @@ const PATHS = [
     isCurrent: false,
   },
   {
-    path: "/cars",
-    name: "Cars",
+    path: "/invoices",
+    name: "Faktury",
     isCurrent: false,
   },
 ];

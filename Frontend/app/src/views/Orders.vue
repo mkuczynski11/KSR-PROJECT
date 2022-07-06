@@ -1,15 +1,10 @@
 <template>
   <b-container>
-    <b-row>
-      <b-col cols="5" />
-      <b-col cols="2"> </b-col>
-      <b-col cols="5" />
-    </b-row>
     <b-row v-if="ordersLoaded" class="py-4">
-      <b-col cols="3"></b-col>
+      <b-col cols="1"></b-col>
       <b-col>
         <b-table
-          cols="6"
+          cols="10"
           v-if="ordersLoaded"
           :fields="fields"
           :items="items"
@@ -27,10 +22,27 @@
           <template #cell(totalPrice)="data">
             {{ data.item.totalPrice }}
           </template>
+          <template #cell(cancel)="data">
+            <b-button
+              variant="danger"
+              @click="openOrderCancellationForm(data.item)"
+              :disabled="
+                data.item.status == 'Shipped to customer' ||
+                data.item.status == 'Canceled' ||
+                data.item.status == 'Awaiting payment'
+              "
+              >Anuluj</b-button
+            >
+          </template>
           <template #cell(confirm)="data">
             <b-button
               variant="success"
               @click="openOrderConfirmationForm(data.item)"
+              :disabled="
+                data.item.status == 'Shipped to customer' ||
+                data.item.status == 'Canceled' ||
+                data.item.status == 'Awaiting payment'
+              "
               >Potwierdź</b-button
             >
           </template>
@@ -39,58 +51,34 @@
           </template>
         </b-table>
       </b-col>
-      <b-col cols="3"></b-col>
+      <b-col cols="1"></b-col>
     </b-row>
     <b-row v-else>
       <b-col cols="12" class="py-4">
         <b-spinner style="width: 3rem; height: 3rem" />
       </b-col>
     </b-row>
-    <b-modal id="confirm-order-modal" size="lg" :hide-header="true">
+    <b-modal id="confirm-order-modal" size="md" :hide-header="true">
       <b-container>
         <h4>Confirm Your order</h4>
       </b-container>
-      <b-row class="pt-2">
-        <b-col cols="6">
-          <b>Price when ordered</b>
-        </b-col>
-        <b-col cols="6">
-          <b>Current price</b>
-        </b-col>
-      </b-row>
-      <b-row>
-        <b-col cols="6" v-if="orderToConfirm">
-          {{ orderToConfirm.unitPrice }}
-        </b-col>
-        <b-col cols="6" v-if="currentPriceLoaded">
-          {{ currentPrice }}
-        </b-col>
-      </b-row>
-      <b-row class="pt-2">
-        <b-col cols="6">
-          <b>Discount when ordered</b>
-        </b-col>
-        <b-col cols="6">
-          <b>Current discount</b>
-        </b-col>
-      </b-row>
-      <b-row>
-        <b-col cols="6" v-if="orderToConfirm">
-          {{ orderToConfirm.discount }}
-        </b-col>
-        <b-col cols="6" v-if="currentDiscountLoaded">
-          {{ currentDiscount }}
-        </b-col>
-      </b-row>
       <template #modal-footer="{}">
         <b-button variant="danger" @click="closeOrderConfirmationForm()">
           Cancel
         </b-button>
-        <b-button
-          variant="success"
-          @click="confirmOrder()"
-          :disabled="!validForm()"
+        <b-button variant="success" @click="confirmOrder()"
           >Confirm order</b-button
+        >
+      </template>
+    </b-modal>
+    <b-modal id="cancel-order-modal" size="md" :hide-header="true">
+      <h4>Are You sure You want to cancel Your order?</h4>
+      <template #modal-footer="{}">
+        <b-button variant="danger" @click="closeOrderCancellationForm()">
+          No, I want to keep it
+        </b-button>
+        <b-button variant="success" @click="cancelOrder()"
+          >Cancel order</b-button
         >
       </template>
     </b-modal>
@@ -98,9 +86,23 @@
 </template>
 
 <script>
-import {getOrderStatus, getBooksPrices, getBooksDiscounts, confirmOrder} from "@/api/api.js";
+import {
+  getOrderStatus,
+  getBooksPrices,
+  getBooksDiscounts,
+  confirmOrder,
+  cancelOrder,
+} from "@/api/api.js";
 
-const ORDER_FIELDS = ["ID", "bookName", "quantity", "totalPrice", "status", "confirm"];
+const ORDER_FIELDS = [
+  "ID",
+  "bookName",
+  "quantity",
+  "totalPrice",
+  "status",
+  "cancel",
+  "confirm",
+];
 
 export default {
   name: "Orders",
@@ -110,13 +112,7 @@ export default {
       items: [],
       fields: ORDER_FIELDS,
       ordersLoaded: false,
-      form: {
-        quantity: null,
-      },
       orderToConfirm: null,
-      currentPrice: null,
-      currentPriceLoaded: false,
-      currentDiscountLoaded: false,
     };
   },
 
@@ -140,7 +136,7 @@ export default {
           totalPrice: order.quantity * order.book.unitPrice,
           unitPrice: order.book.unitPrice,
           discount: order.book.discount,
-          status: statusReq.status
+          status: statusReq.status,
         };
         this.items.push(JSON.parse(JSON.stringify(parsed_order)));
       }
@@ -149,21 +145,24 @@ export default {
       this.watchForStatusChange();
     },
 
-    watchForStatusChange() {
+    async watchForStatusChange() {
       setInterval(() => {
         for (let order of this.orders) {
-          getOrderStatus(order.orderId).then(status => {
+          getOrderStatus(order.orderId).then((status) => {
             let index = this.orders.indexOf(order);
             this.items[index].status = status.status;
+
+            if (this.items[index].status == "Canceled" && this.orderToConfirm.id == order.orderId) {
+              this.closeOrderConfirmationForm();
+              this.closeOrderCancellationForm();
+            }
           });
         }
       }, 3000);
     },
 
-    async openOrderConfirmationForm(order) {
+    openOrderConfirmationForm(order) {
       this.orderToConfirm = order;
-      await this.loadCurrentPrice(order.bookId);
-      await this.loadCurrentDiscount(order.bookId);
 
       this.$bvModal.show("confirm-order-modal");
     },
@@ -172,25 +171,14 @@ export default {
       this.$bvModal.hide("confirm-order-modal");
     },
 
-    validForm() {
-      // TODO: Add conditions
-      return true;
+    openOrderCancellationForm(order) {
+      this.orderToConfirm = order;
+
+      this.$bvModal.show("cancel-order-modal");
     },
 
-    async loadCurrentPrice(bookId) {
-      this.currentPriceLoaded = false;
-
-      let prices = await getBooksPrices();
-      this.currentPrice = prices.find(price => price.id === bookId).price;
-      this.currentPriceLoaded = true;
-    },
-
-    async loadCurrentDiscount(bookId) {
-      this.currentDiscountLoaded = false;
-
-      let prices = await getBooksDiscounts();
-      this.currentDiscount = prices.find(d => d.id === bookId).discount;
-      this.currentDiscountLoaded = true;
+    closeOrderCancellationForm() {
+      this.$bvModal.hide("cancel-order-modal");
     },
 
     async confirmOrder() {
@@ -214,6 +202,32 @@ export default {
       }
 
       this.closeOrderConfirmationForm();
+    },
+
+    async cancelOrder() {
+      // TODO: Add logic about confirming order
+
+      let res = await cancelOrder(this.orderToConfirm);
+
+      if (res.status === 200) {
+        getOrderStatus(this.orderToConfirm.id).then((status) => {
+          let index = this.orders.indexOf(this.orderToConfirm);
+          this.items[index].status = status.status;
+        });
+        this.$bvToast.toast(`Successfully cancelled order!`, {
+          title: "Order cancellation",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      } else {
+        this.$bvToast.toast(`Failed to cancel order!`, {
+          title: "Order cancellation",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      }
+
+      this.closeOrderCancellationForm();
     },
 
     // addToBasket(bookID) {
