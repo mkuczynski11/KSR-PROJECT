@@ -171,8 +171,6 @@ export default {
     },
 
     async payInvoice() {
-      // TODO: Add logic about confirming order
-
       let res = await payInvoice(this.invoiceToPay);
 
       if (res.status === 200) {

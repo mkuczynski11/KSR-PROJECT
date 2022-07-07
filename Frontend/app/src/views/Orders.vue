@@ -182,8 +182,6 @@ export default {
     },
 
     async confirmOrder() {
-      // TODO: Add logic about confirming order
-
       let res = await confirmOrder(this.orderToConfirm);
 
       if (res.status === 200) {
@@ -205,8 +203,6 @@ export default {
     },
 
     async cancelOrder() {
-      // TODO: Add logic about confirming order
-
       let res = await cancelOrder(this.orderToConfirm);
 
       if (res.status === 200) {

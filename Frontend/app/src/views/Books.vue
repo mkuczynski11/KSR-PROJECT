@@ -333,8 +333,8 @@ export default {
         let newMethod = JSON.parse(JSON.stringify(method));
         this.shippingMethods.push({
           value: {
-            method: newMethod.methodValue, // to jest nazwa metody
-            price: 10,                     // TODO: change to get price from API
+            method: newMethod.methodValue,
+            price: newMethod.price,
           },
           text: newMethod.methodValue,
         });
