@@ -32,7 +32,7 @@ namespace Shipping.Controllers
             return _shippingContext.ShipmentItems;
         }
         [HttpPost("methods")]
-        public ActionResult<Method> PutMethod([FromBody] MethodRequest request)
+        public ActionResult<Method> PostMethod([FromBody] MethodRequest request)
         {
             Method method = new Method(request.Method, request.Price);
 
@@ -49,6 +49,19 @@ namespace Shipping.Controllers
             if (method == null) return NotFound();
 
             _shippingContext.MethodItems.Remove(method);
+            _shippingContext.SaveChanges();
+
+            return method;
+        }
+        [HttpPut("methods")]
+        public ActionResult<Method> PutMethod([FromBody] MethodRequest request)
+        {
+            Method method = _shippingContext.MethodItems.SingleOrDefault(m => m.MethodValue.Equals(request.Method));
+
+            if (method == null) return NotFound();
+
+            method.MethodValue = request.Method;
+            method.Price = request.Price;
             _shippingContext.SaveChanges();
 
             return method;
