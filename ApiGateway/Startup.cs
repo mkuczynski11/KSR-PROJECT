@@ -29,8 +29,18 @@ namespace ApiGateway
 
         public void ConfigureServices(IServiceCollection services)
         {
+<<<<<<< HEAD
             services.AddHealthChecks();
 
+=======
+            services.AddCors(options =>
+            {
+                options.AddPolicy("CorsPolicy",
+                    builder => builder.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+            });
+>>>>>>> c45d449 (CORS fix)
             services.AddOcelot().AddCacheManager(settings =>
                 settings.WithDictionaryHandle()
             );
