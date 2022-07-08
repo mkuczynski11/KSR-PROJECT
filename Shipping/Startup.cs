@@ -32,11 +32,7 @@ namespace Shipping
             services.AddMassTransit(x =>
             {
                 x.AddSagaStateMachine<DeliveryStateMachine, DeliveryState>()
-                    .InMemoryRepository()
-                    .Endpoint(e =>
-                    {
-                        e.Name = "shipping-saga-queue";
-                    });
+                    .InMemoryRepository();
                 x.AddConsumer<ShippingConfirmationConsumer>();
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -52,7 +48,6 @@ namespace Shipping
                         ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureSaga<DeliveryState>(context);
                     });
-                    cfg.UseInMemoryScheduler();
 
                     cfg.ReceiveEndpoint(endpointConfiguration.ConfirmationConsumer, ep =>
                     {

@@ -20,6 +20,9 @@ namespace Contact.Models
         public string DeliveryMethod { get; set; }
         public double DeliveryPrice { get; set; }
         public string BookID { get; set; }
+        public string BookName { get; set; }
+        public double BookPrice { get; set; }
+        public double BookDiscount { get; set; }
         public int BookQuantity { get; set; }
         public bool ClientResponded { get; set; }
         public bool WarehouseResponded { get; set; }
@@ -38,7 +41,8 @@ namespace Contact.Models
     {
         private readonly IServiceScope _scope;
 
-        public State AwaitingConfirmation { get; private set; }
+        public State AwaitingClientConfirmation { get; private set; }
+        public State AwaitingServicesConfirmation { get; private set; }
         public State AwaitingPayment { get; private set; }
         public State AwaitingShipment { get; private set; }
 
@@ -66,7 +70,8 @@ namespace Contact.Models
         public Event<ShippingShipmentSent> ShippingShipmentSentEvent { get; private set; }
         public Event<ShippingShipmentNotSent> ShippingShipmentNotSentEvent { get; private set; }
 
-        public Schedule<OrderSagaData, ContactOrderConfirmationTimeoutExpired> ContactOrderConfirmationTimeout { get; private set; }
+        public Schedule<OrderSagaData, ContactOrderClientConfirmationTimeoutExpired> ContactOrderClientConfirmationTimeout { get; private set; }
+        public Schedule<OrderSagaData, ContactOrderServicesConfirmationTimeoutExpired> ContactOrderServicesConfirmationTimeout { get; private set; }
         public Schedule<OrderSagaData, ContactOrderPaymentTimeoutExpired> ContactOrderPaymentTimeout { get; private set; }
         public Schedule<OrderSagaData, ContactShipmentTimeoutExpired> ContactShipmentTimeout { get; private set; }
 
@@ -78,9 +83,14 @@ namespace Contact.Models
 
             InstanceState(x => x.CurrentState);
 
-            Schedule(() => ContactOrderConfirmationTimeout, instance => instance.TimeoutId, s =>
+            Schedule(() => ContactOrderClientConfirmationTimeout, instance => instance.TimeoutId, s =>
             {
-                s.Delay = TimeSpan.FromSeconds(sagaConfiguration.ConfirmationTimeoutSeconds);
+                s.Delay = TimeSpan.FromSeconds(sagaConfiguration.ClientConfirmationTimeoutSeconds);
+                s.Received = r => r.CorrelateById(context => context.Message.OrderId);
+            });
+            Schedule(() => ContactOrderServicesConfirmationTimeout, instance => instance.TimeoutId, s =>
+            {
+                s.Delay = TimeSpan.FromSeconds(sagaConfiguration.ServicesConfirmationTimeoutSeconds);
                 s.Received = r => r.CorrelateById(context => context.Message.OrderId);
             });
             Schedule(() => ContactOrderPaymentTimeout, instance => instance.TimeoutId, s =>
@@ -105,59 +115,26 @@ namespace Contact.Models
                     context.Saga.DeliveryPrice = context.Message.DeliveryPrice;
                     context.Saga.BookQuantity = context.Message.BookQuantity;
                     context.Saga.BookID = context.Message.BookID;
+                    context.Saga.BookName = context.Message.BookName;
+                    context.Saga.BookPrice = context.Message.BookPrice;
+                    context.Saga.BookDiscount = context.Message.BookDiscount;
                     context.Saga.ClientResponded = false;
                     context.Saga.WarehouseResponded = false;
                     context.Saga.SalesResponded = false;
                     context.Saga.MarketingResponded = false;
                     context.Saga.ShippingResponded = false;
                 })
-                .PublishAsync(context => context.Init<WarehouseConfirmation>(new
-                {
-                    CorrelationId = context.Message.CorrelationId,
-                    BookID = context.Message.BookID,
-                    BookName = context.Message.BookName,
-                    BookQuantity = context.Message.BookQuantity
-                }))
-                .PublishAsync(context => context.Init<SalesConfirmation>(new
-                {
-                    CorrelationId = context.Message.CorrelationId,
-                    BookID = context.Message.BookID,
-                    BookPrice = context.Message.BookPrice
-                }))
-                .PublishAsync(context => context.Init<MarketingConfirmation>(new
-                {
-                    CorrelationId = context.Message.CorrelationId,
-                    BookID = context.Message.BookID,
-                    BookDiscount = context.Message.BookDiscount
-                }))
-                .PublishAsync(context => context.Init<ShippingConfirmation>(new
-                {
-                    CorrelationId = context.Message.CorrelationId,
-                    DeliveryMethod = context.Message.DeliveryMethod,
-                    DeliveryPrice = context.Message.DeliveryPrice
-                }))
-                .PublishAsync(context => context.Init<AccountingInvoiceStart>(new
-                {
-                    CorrelationId = context.Message.CorrelationId,
-                    BookID = context.Message.BookID,
-                    BookName = context.Message.BookName,
-                    BookQuantity = context.Message.BookQuantity,
-                    BookPrice = context.Message.BookPrice,
-                    BookDiscount = context.Message.BookDiscount,
-                    DeliveryMethod = context.Message.DeliveryMethod,
-                    DeliveryPrice = context.Message.DeliveryPrice
-                }))
-                .Schedule(ContactOrderConfirmationTimeout, context => context.Init<ContactOrderConfirmationTimeoutExpired>(new
+                .Schedule(ContactOrderClientConfirmationTimeout, context => context.Init<ContactOrderClientConfirmationTimeoutExpired>(new
                 {
                     OrderId = context.Message.CorrelationId
                 }))
-                .TransitionTo(AwaitingConfirmation)
+                .TransitionTo(AwaitingClientConfirmation)
                 );
 
-
-            During(AwaitingConfirmation,
+            During(AwaitingClientConfirmation,
 
                 When(ClientConfirmationAcceptEvent)
+                .Unschedule(ContactOrderClientConfirmationTimeout)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
@@ -173,30 +150,107 @@ namespace Contact.Models
                         order.IsConfirmedByClient = true;
                         orders.OrderItems.Update(order);
                         orders.SaveChanges();
-
-                        if (context.Saga.AllResponded())
-                        {
-                            if (order.isConfirmed())
-                            {
-                                context.Publish<AccountingInvoicePublish>(new
-                                {
-                                    CorrelationId = context.Message.CorrelationId
-                                });
-                                context.Publish<ContactConfirmationConfirmedByAllParties>(new
-                                {
-                                    CorrelationId = context.Message.CorrelationId
-                                });
-                            }
-                            else
-                            {
-                                context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
-                                {
-                                    CorrelationId = context.Message.CorrelationId
-                                });
-                            }
-                        }
                     }
-                }),
+                })
+                .PublishAsync(context => context.Init<WarehouseConfirmation>(new
+                {
+                    CorrelationId = context.Message.CorrelationId,
+                    BookID = context.Saga.BookID,
+                    BookName = context.Saga.BookName,
+                    BookQuantity = context.Saga.BookQuantity
+                }))
+                .PublishAsync(context => context.Init<SalesConfirmation>(new
+                {
+                    CorrelationId = context.Message.CorrelationId,
+                    BookID = context.Saga.BookID,
+                    BookPrice = context.Saga.BookPrice
+                }))
+                .PublishAsync(context => context.Init<MarketingConfirmation>(new
+                {
+                    CorrelationId = context.Message.CorrelationId,
+                    BookID = context.Saga.BookID,
+                    BookDiscount = context.Saga.BookDiscount
+                }))
+                .PublishAsync(context => context.Init<ShippingConfirmation>(new
+                {
+                    CorrelationId = context.Message.CorrelationId,
+                    DeliveryMethod = context.Saga.DeliveryMethod,
+                    DeliveryPrice = context.Saga.DeliveryPrice
+                }))
+                .PublishAsync(context => context.Init<AccountingInvoiceStart>(new
+                {
+                    CorrelationId = context.Message.CorrelationId,
+                    BookID = context.Saga.BookID,
+                    BookName = context.Saga.BookName,
+                    BookQuantity = context.Saga.BookQuantity,
+                    BookPrice = context.Saga.BookPrice,
+                    BookDiscount = context.Saga.BookDiscount,
+                    DeliveryMethod = context.Saga.DeliveryMethod,
+                    DeliveryPrice = context.Saga.DeliveryPrice
+                }))
+                .Schedule(ContactOrderServicesConfirmationTimeout, context => context.Init<ContactOrderServicesConfirmationTimeoutExpired>(new
+                {
+                    OrderId = context.Message.CorrelationId
+                }))
+                .TransitionTo(AwaitingServicesConfirmation),
+
+                When(ClientConfirmationRefuseEvent)
+                .Unschedule(ContactOrderClientConfirmationTimeout)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
+                            $"canceled by client.");
+
+                    context.Saga.ClientResponded = true;
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (order != null)
+                    {
+                        order.IsConfirmedByClient = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+                })
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.CorrelationId
+                }))
+                .Finalize(),
+
+                When(ContactOrderClientConfirmationTimeout.Received)
+                .Then(context =>
+                {
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
+
+                    string message = $"Order ID={context.Message.OrderId}: " +
+                        $"client confirmation time expired.";
+
+                    if (order != null)
+                    {
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+
+                        message += "\n" + order;
+                    }
+
+                    Console.WriteLine(message);
+                })
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.OrderId
+                }))
+                .Finalize()
+                );
+
+
+            During(AwaitingServicesConfirmation,
+
                 When(WarehouseConfirmationAcceptEvent)
                 .Then(context =>
                 {
@@ -358,7 +412,7 @@ namespace Contact.Models
                     }
                 }),
                 When(ContactConfirmationConfirmedByAllPartiesEvent)
-                .Unschedule(ContactOrderConfirmationTimeout)
+                .Unschedule(ContactOrderServicesConfirmationTimeout)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
@@ -370,7 +424,7 @@ namespace Contact.Models
                 }))
                 .TransitionTo(AwaitingPayment),
 
-                When(ContactOrderConfirmationTimeout.Received)
+                When(ContactOrderServicesConfirmationTimeout.Received)
                 .Then(context => 
                 {
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
@@ -378,7 +432,7 @@ namespace Contact.Models
                             .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
 
                     string message = $"Order ID={context.Message.OrderId}: " +
-                        $"confirmation time expired.";
+                        $"services confirmation time expired.";
 
                     if (order != null)
                     {
@@ -401,32 +455,6 @@ namespace Contact.Models
                 }))
                 .Finalize(),
 
-                When(ClientConfirmationRefuseEvent)
-                .Then(context =>
-                {
-                    Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
-                            $"canceled by client.");
-
-                    context.Saga.ClientResponded = true;
-
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
-                    if (order != null)
-                    {
-                        order.IsConfirmedByClient = false;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
-
-                        if (context.Saga.AllResponded())
-                        {
-                            context.Publish<ContactConfirmationRefusedByAtLeastOneParty>(new
-                            {
-                                CorrelationId = context.Message.CorrelationId
-                            });
-                        }
-                    }
-                }),
                 When(WarehouseConfirmationRefuseEvent)
                 .Then(context =>
                 {
@@ -532,7 +560,7 @@ namespace Contact.Models
                     }
                 }),
                 When(ContactConfirmationRefusedByAtLeastOnePartyEvent)
-                .Unschedule(ContactOrderConfirmationTimeout)
+                .Unschedule(ContactOrderServicesConfirmationTimeout)
                 .Then(context =>
                 {
                     string message = $"Order ID={context.Message.CorrelationId}: " +

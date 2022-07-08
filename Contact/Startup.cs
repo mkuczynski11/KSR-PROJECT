@@ -33,11 +33,7 @@ namespace Contact
             services.AddMassTransit(x =>
             {
                 x.AddSagaStateMachine<OrderSaga, OrderSagaData>()
-                    .InMemoryRepository()
-                    .Endpoint(e =>
-                    {
-                        e.Name = rabbitConfiguration.ReceiveEndpoint;
-                    });
+                    .InMemoryRepository();
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>

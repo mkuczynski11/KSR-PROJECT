@@ -75,7 +75,7 @@ namespace ErrorDashboard
                             PrintDetails(context);
                             return Task.CompletedTask;
                         });
-                        ep.Handler<Fault<ContactOrderConfirmationTimeoutExpired>>(context =>
+                        ep.Handler<Fault<ContactOrderClientConfirmationTimeoutExpired>>(context =>
                         {
                             Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
                                 $"\t{context.Message.Message.Print()}");

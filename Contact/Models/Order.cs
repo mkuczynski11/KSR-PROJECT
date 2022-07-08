@@ -55,27 +55,27 @@ namespace Contact.Models
             if (IsConfirmedByClient)
                 confStatus += "\tClient: Confirmed\n";
             else
-                confStatus += "\tClient: Refused\n";
+                confStatus += "\tClient: Not confirmed\n";
 
             if (IsConfirmedByWarehouse)
                 confStatus += "\tWarehouse: Confirmed\n";
             else
-                confStatus += "\tWarehouse: Refused\n";
+                confStatus += "\tWarehouse: Not confirmed\n";
 
             if (IsConfirmedBySales)
                 confStatus += "\tSales: Confirmed\n";
             else
-                confStatus += "\tSales: Refused\n";
+                confStatus += "\tSales: Not confirmed\n";
 
             if (IsConfirmedByMarketing)
                 confStatus += "\tMarketing: Confirmed\n";
             else
-                confStatus += "\tMarketing: Refused\n";
+                confStatus += "\tMarketing: Not confirmed\n";
 
             if (IsConfirmedByShipping)
                 confStatus += "\tShipping: Confirmed";
             else
-                confStatus += "\tShipping: Refused";
+                confStatus += "\tShipping: Not confirmed";
 
             if (IsCanceled)
                 confStatus += "\n\t(Order canceled)";
