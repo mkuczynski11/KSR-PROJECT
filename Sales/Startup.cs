@@ -129,7 +129,7 @@ namespace Sales
                 }
                 else
                 {
-                    _logger.LogInformation($"Correct information for book with BookID={context.Message.BookID}, price={bookPrice} for request={context.Message.CorrelationId}.");6
+                    _logger.LogInformation($"Correct information for book with BookID={context.Message.BookID}, price={bookPrice} for request={context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<SalesConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
