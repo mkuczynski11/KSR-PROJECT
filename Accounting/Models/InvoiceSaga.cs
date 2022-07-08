@@ -1,27 +1,22 @@
-﻿using Common;
+﻿using Accounting.Configuration;
+using Common;
 using MassTransit;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
 
 namespace Accounting.Models
 {
-    public interface AccountingInvoicePaymentTimeoutExpired 
-    { 
-        Guid InvoiceId { get; }
-    }
-
     public class InvoiceSagaData : SagaStateMachineInstance
     {
         public Guid CorrelationId { get; set; }
-        public Guid? AccountingInvoicePaymentTimeoutId { get; set; }
+        public Guid? TimeoutId { get; set; }
         public string CurrentState { get; set; }
     }
 
     public class InvoiceSaga : MassTransitStateMachine<InvoiceSagaData>, IDisposable
     {
-        public const int PaymentTimeoutSeconds = 30;
-
         private readonly IServiceScope _scope;
 
         public State AwaitingPublishing { get; private set; }
@@ -35,15 +30,17 @@ namespace Accounting.Models
         public Schedule<InvoiceSagaData, AccountingInvoicePaymentTimeoutExpired> AccountingInvoicePaymentTimeout { get; private set; }
 
 
-        public InvoiceSaga(IServiceProvider services)
+        public InvoiceSaga(IServiceProvider services, IConfiguration configuration)
         {
             _scope = services.CreateScope();
 
+            var sagaConfiguration = configuration.GetSection("InvoiceSaga").Get<InvoiceSagaConfiguration>();
+
             InstanceState(x => x.CurrentState);
 
-            Schedule(() => AccountingInvoicePaymentTimeout, instance => instance.AccountingInvoicePaymentTimeoutId, s =>
+            Schedule(() => AccountingInvoicePaymentTimeout, instance => instance.TimeoutId, s =>
             {
-                s.Delay = TimeSpan.FromSeconds(PaymentTimeoutSeconds);
+                s.Delay = TimeSpan.FromSeconds(sagaConfiguration.PaymentTimeoutSeconds);
                 s.Received = r => r.CorrelateById(context => context.Message.InvoiceId);
             });
 

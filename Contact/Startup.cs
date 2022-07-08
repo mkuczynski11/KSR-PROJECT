@@ -47,8 +47,11 @@ namespace Contact
                     });
                     cfg.ReceiveEndpoint(endpointConfiguration.OrderSaga, ep =>
                     {
+                        ep.UseInMemoryOutbox();
+                        ep.UseMessageRetry(r => r.Incremental(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)));
                         ep.ConfigureSaga<OrderSagaData>(context);
                     });
+                    cfg.UseScheduledRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
                     cfg.UseInMemoryScheduler();
                 });
             });

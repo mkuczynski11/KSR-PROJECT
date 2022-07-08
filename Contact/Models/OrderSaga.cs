@@ -1,5 +1,7 @@
 ﻿using Common;
+using Contact.Configuration;
 using MassTransit;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -8,18 +10,12 @@ using System.Threading.Tasks;
 
 namespace Contact.Models
 {
-    public interface ContactOrderConfirmationTimeoutExpired
-    {
-        Guid OrderId { get; }
-    }
-
-    public interface ContactConfirmationConfirmedByAllParties : CorrelatedBy<Guid> { }
-    public interface ContactConfirmationRefusedByAtLeastOneParty : CorrelatedBy<Guid> { }
+    
 
     public class OrderSagaData : SagaStateMachineInstance
     {
         public Guid CorrelationId { get; set; }
-        public Guid? ContactOrderConfirmationTimeoutId { get; set; }
+        public Guid? TimeoutId { get; set; }
         public string CurrentState { get; set; }
         public string DeliveryMethod { get; set; }
         public double DeliveryPrice { get; set; }
@@ -40,8 +36,6 @@ namespace Contact.Models
 
     public class OrderSaga : MassTransitStateMachine<OrderSagaData>, IDisposable
     {
-        public const int ConfirmationTimeoutSeconds = 30;
-
         private readonly IServiceScope _scope;
 
         public State AwaitingConfirmation { get; private set; }
@@ -73,16 +67,30 @@ namespace Contact.Models
         public Event<ShippingShipmentNotSent> ShippingShipmentNotSentEvent { get; private set; }
 
         public Schedule<OrderSagaData, ContactOrderConfirmationTimeoutExpired> ContactOrderConfirmationTimeout { get; private set; }
+        public Schedule<OrderSagaData, ContactOrderPaymentTimeoutExpired> ContactOrderPaymentTimeout { get; private set; }
+        public Schedule<OrderSagaData, ContactShipmentTimeoutExpired> ContactShipmentTimeout { get; private set; }
 
-        public OrderSaga(IServiceProvider services)
+        public OrderSaga(IServiceProvider services, IConfiguration configuration)
         {
             _scope = services.CreateScope();
 
+            var sagaConfiguration = configuration.GetSection("OrderSaga").Get<OrderSagaConfiguration>();
+
             InstanceState(x => x.CurrentState);
 
-            Schedule(() => ContactOrderConfirmationTimeout, instance => instance.ContactOrderConfirmationTimeoutId, s =>
+            Schedule(() => ContactOrderConfirmationTimeout, instance => instance.TimeoutId, s =>
             {
-                s.Delay = TimeSpan.FromSeconds(ConfirmationTimeoutSeconds);
+                s.Delay = TimeSpan.FromSeconds(sagaConfiguration.ConfirmationTimeoutSeconds);
+                s.Received = r => r.CorrelateById(context => context.Message.OrderId);
+            });
+            Schedule(() => ContactOrderPaymentTimeout, instance => instance.TimeoutId, s =>
+            {
+                s.Delay = TimeSpan.FromSeconds(sagaConfiguration.PaymentTimeoutSeconds);
+                s.Received = r => r.CorrelateById(context => context.Message.OrderId);
+            });
+            Schedule(() => ContactShipmentTimeout, instance => instance.TimeoutId, s =>
+            {
+                s.Delay = TimeSpan.FromSeconds(sagaConfiguration.ShipmentTimeoutSeconds);
                 s.Received = r => r.CorrelateById(context => context.Message.OrderId);
             });
 
@@ -356,6 +364,10 @@ namespace Contact.Models
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
                             $"confirmed by all parties.");
                 })
+                .Schedule(ContactOrderPaymentTimeout, context => context.Init<ContactOrderPaymentTimeoutExpired>(new
+                {
+                    OrderId = context.Message.CorrelationId
+                }))
                 .TransitionTo(AwaitingPayment),
 
                 When(ContactOrderConfirmationTimeout.Received)
@@ -553,6 +565,7 @@ namespace Contact.Models
 
             During(AwaitingPayment,
                 When(AccountingInvoicePaidEvent)
+                .Unschedule(ContactOrderPaymentTimeout)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
@@ -577,8 +590,13 @@ namespace Contact.Models
                         BookQuantity = context.Saga.BookQuantity
                     });
                 })
+                .Schedule(ContactShipmentTimeout, context => context.Init<ContactShipmentTimeoutExpired>(new
+                {
+                    OrderId = context.Message.CorrelationId
+                }))
                 .TransitionTo(AwaitingShipment),
                 When(AccountingInvoiceNotPaidEvent)
+                .Unschedule(ContactOrderPaymentTimeout)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
@@ -599,11 +617,34 @@ namespace Contact.Models
                 {
                     CorrelationId = context.Message.CorrelationId
                 }))
+                .Finalize(),
+                When(ContactOrderPaymentTimeout.Received)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.OrderId}: " +
+                            $"payment time expired.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
+                    if (order != null)
+                    {
+                        order.IsPaid = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+                })
+                .PublishAsync(context => context.Init<OrderCancel>(new
+                {
+                    CorrelationId = context.Message.OrderId
+                }))
                 .Finalize()
                 );
 
             During(AwaitingShipment,
                 When(ShippingShipmentSentEvent)
+                .Unschedule(ContactShipmentTimeout)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
@@ -622,6 +663,7 @@ namespace Contact.Models
                 .Finalize(),
 
                 When(ShippingShipmentNotSentEvent)
+                .Unschedule(ContactShipmentTimeout)
                 .Then(context =>
                 {
                     Console.WriteLine($"Order ID={context.Message.CorrelationId}: " +
@@ -630,6 +672,24 @@ namespace Contact.Models
                     var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
                     Order order = orders.OrderItems
                             .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    if (order != null)
+                    {
+                        order.IsShipped = false;
+                        order.IsCanceled = true;
+                        orders.OrderItems.Update(order);
+                        orders.SaveChanges();
+                    }
+                })
+                .Finalize(),
+                When(ContactShipmentTimeout.Received)
+                .Then(context =>
+                {
+                    Console.WriteLine($"Order ID={context.Message.OrderId}: " +
+                            $"shipment time expired.");
+
+                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
+                    Order order = orders.OrderItems
+                            .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
                     if (order != null)
                     {
                         order.IsShipped = false;

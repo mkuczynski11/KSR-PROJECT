@@ -7,6 +7,15 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+
+  errordashboard:
+   build:
+    context: ./
+    dockerfile: ./Dockerfile.ErrorDashboard
+   ports:
+    - "86:80"
+   depends_on:
+    - rabbitmq
   
   shipping:
    build:
