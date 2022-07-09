@@ -24,11 +24,17 @@ namespace Accounting
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
             var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
+            var mongoDbConfiguration = Configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             services.AddMassTransit(x =>
             {
                 x.AddSagaStateMachine<InvoiceSaga, InvoiceSagaData>()
-                    .InMemoryRepository();
+                    .MongoDbRepository(r =>
+                    {
+                        r.Connection = mongoDbConfiguration.Connection;
+                        r.DatabaseName = mongoDbConfiguration.DatabaseName;
+                        r.CollectionName = "saga";
+                    });
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>

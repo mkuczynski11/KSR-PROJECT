@@ -29,11 +29,17 @@ namespace Shipping
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
             var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
+            var mongoDbConfiguration = Configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             services.AddMassTransit(x =>
             {
                 x.AddSagaStateMachine<DeliveryStateMachine, DeliveryState>()
-                    .InMemoryRepository();
+                    .MongoDbRepository(r =>
+                    {
+                        r.Connection = mongoDbConfiguration.Connection;
+                        r.DatabaseName = mongoDbConfiguration.DatabaseName;
+                        r.CollectionName = "saga";
+                    });
                 x.AddConsumer<ShippingConfirmationConsumer>();
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -188,9 +194,10 @@ namespace Shipping
             }
         }
 
-        public class DeliveryState : SagaStateMachineInstance
+        public class DeliveryState : SagaStateMachineInstance, ISagaVersion
         {
             public Guid CorrelationId { get; set; }
+            public int Version { get; set; }
             public Guid? ShippingWarehouseDeliveryConfirmationTimeoutId { get; set; }
             public string CurrentState { get; set; }
             public string BookID { get; set; }

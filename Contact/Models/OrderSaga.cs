@@ -11,9 +11,10 @@ namespace Contact.Models
 {
     
 
-    public class OrderSagaData : SagaStateMachineInstance
+    public class OrderSagaData : SagaStateMachineInstance, ISagaVersion
     {
         public Guid CorrelationId { get; set; }
+        public int Version { get; set; }
         public Guid? TimeoutId { get; set; }
         public string CurrentState { get; set; }
         public string DeliveryMethod { get; set; }

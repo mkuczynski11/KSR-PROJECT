@@ -9,9 +9,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Accounting.Models
 {
-    public class InvoiceSagaData : SagaStateMachineInstance
+    public class InvoiceSagaData : SagaStateMachineInstance, ISagaVersion
     {
         public Guid CorrelationId { get; set; }
+        public int Version { get; set; }
         public Guid? TimeoutId { get; set; }
         public string CurrentState { get; set; }
     }
