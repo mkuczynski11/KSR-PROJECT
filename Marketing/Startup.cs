@@ -32,6 +32,7 @@ namespace Marketing
             }
             public async Task Consume(ConsumeContext<NewBookMarketingInfo> context)
             {
+                throw new Exception("dupa");
                 var bookID = context.Message.ID;
                 var bookDiscount = context.Message.discount;
                 Book book = new Book(bookID, bookDiscount);
