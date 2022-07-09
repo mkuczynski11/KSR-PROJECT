@@ -43,12 +43,21 @@ namespace Common
     /* INVOICE SAGA SECTION END */
 
     /* ORDER SAGA SECTION */
-    public interface ContactOrderConfirmationTimeoutExpired
+    public interface ContactOrderClientConfirmationTimeoutExpired
     {
         Guid OrderId { get; }
         string Print()
         {
-            return $"ContactOrderConfirmationTimeoutExpired{{" +
+            return $"ContactOrderClientConfirmationTimeoutExpired{{" +
+                $"OrderId={OrderId}}}";
+        }
+    }
+    public interface ContactOrderServicesConfirmationTimeoutExpired
+    {
+        Guid OrderId { get; }
+        string Print()
+        {
+            return $"ContactOrderServicesConfirmationTimeoutExpired{{" +
                 $"OrderId={OrderId}}}";
         }
     }
