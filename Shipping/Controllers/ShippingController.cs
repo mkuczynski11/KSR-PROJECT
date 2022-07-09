@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using MassTransit;
-using System.Threading.Tasks;
-using Common;
-using System;
 using Shipping.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Shipping.Controllers
 {
@@ -13,11 +11,13 @@ namespace Shipping.Controllers
     [Route("[controller]")]
     public class ShippingController : ControllerBase
     {
+        private readonly ILogger<ShippingController> _logger;
         private readonly ShippingContext _shippingContext;
         public readonly IPublishEndpoint _publishEndpoint;
 
-        public ShippingController(IPublishEndpoint publishEndpoint, ShippingContext shippingContext)
+        public ShippingController(IPublishEndpoint publishEndpoint, ShippingContext shippingContext, ILogger<ShippingController> logger)
         {
+            _logger = logger;
             _shippingContext = shippingContext;
             _publishEndpoint = publishEndpoint;
         }

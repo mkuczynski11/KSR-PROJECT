@@ -2,11 +2,9 @@
 using Common;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Accounting.Controllers
 {
@@ -14,11 +12,13 @@ namespace Accounting.Controllers
     [Route("[controller]")]
     public class AccountingController : ControllerBase
     {
+        private readonly ILogger<AccountingController> _logger;
         private readonly InvoiceContext _invoiceContext;
         public readonly IPublishEndpoint _publishEndpoint;
 
-        public AccountingController(IPublishEndpoint publishEndpoint, InvoiceContext invoiceContext)
+        public AccountingController(IPublishEndpoint publishEndpoint, InvoiceContext invoiceContext, ILogger<AccountingController> logger)
         {
+            _logger = logger;
             _invoiceContext = invoiceContext;
             _publishEndpoint = publishEndpoint;
         }
@@ -26,7 +26,7 @@ namespace Accounting.Controllers
         [HttpGet("invoices/{id}")]
         public ActionResult<InvoiceResponse> GetInvoice(string id)
         {
-            Console.WriteLine($"Invoice for order with ID:{id} requested");
+            _logger.LogInformation($"Invoice for order with ID:{id} requested");
             Invoice invoice = _invoiceContext.InvoiceItems.SingleOrDefault(o => o.ID.Equals(id));
             if (invoice == null) return NotFound();
             if (!invoice.IsPublic) return NoContent();

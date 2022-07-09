@@ -12,6 +12,7 @@ using Shipping.Models;
 using Microsoft.EntityFrameworkCore;
 using Common;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Shipping
 {
@@ -101,6 +102,7 @@ namespace Shipping
         public class DeliveryStateMachine : MassTransitStateMachine<DeliveryState>, IDisposable
         {
             private readonly IServiceScope _scope;
+            private readonly ILogger<DeliveryStateMachine> _logger;
 
             public State RequestSend { get; private set; }
             public State ReadyToDeliver { get; private set; }
@@ -112,8 +114,9 @@ namespace Shipping
 
             public Schedule<DeliveryState, ShippingWarehouseDeliveryConfirmationTimeoutExpired> ShippingWarehouseDeliveryConfirmationTimeout { get; private set; }
 
-            public DeliveryStateMachine(IServiceProvider services, IConfiguration configuration)
+            public DeliveryStateMachine(IServiceProvider services, IConfiguration configuration, ILogger<DeliveryStateMachine> logger)
             {
+                _logger = logger;
                 _scope = services.CreateScope();
 
                 var sagaConfiguration = configuration.GetSection("ShippingSaga").Get<ShippingSagaConfiguration>();
@@ -129,7 +132,7 @@ namespace Shipping
                 Initially(
                     When(ShippingShipmentStartEvent)
                     .Then(context => {
-                        Console.WriteLine($"Got shipping request for book={context.Message.BookID}, quantity={context.Message.BookQuantity}, price={context.Message.DeliveryPrice}, method={context.Message.DeliveryMethod}");
+                        _logger.LogInformation($"Got shipping request for book={context.Message.BookID}, quantity={context.Message.BookQuantity}, price={context.Message.DeliveryPrice}, method={context.Message.DeliveryMethod}");
                         Shipment shipment = new Shipment(context.Message.CorrelationId.ToString(), false, context.Message.BookID, context.Message.BookQuantity);
                         var shipments = _scope.ServiceProvider.GetRequiredService<ShippingContext>();
                         shipments.Add(shipment);
@@ -159,19 +162,19 @@ namespace Shipping
                             shipment.IsConfirmedByWarehouse = true;
                             shipments.SaveChanges();
                         }
-                        Console.WriteLine($"Warehouse confirmed that this book is available");
+                        _logger.LogInformation($"Warehouse confirmed that this book is available");
                     })
                     .PublishAsync(context => context.Init<ShippingShipmentSent>(new { CorrelationId = context.Message.CorrelationId }))
                     .Finalize(),
                     When(WarehouseDeliveryRejectionEvent)
                     .Then(context => {
-                        Console.WriteLine($"Warehouse denied that this book is available");
+                        _logger.LogError($"Warehouse denied that this book is available");
                     })
                     .PublishAsync(context => context.Init<ShippingShipmentNotSent>(new { CorrelationId = context.Message.CorrelationId }))
                     .Finalize(),
                     When(ShippingWarehouseDeliveryConfirmationTimeout.Received)
                     .Then(context => {
-                        Console.WriteLine($"Warehouse did not confirm the availability in time");
+                        _logger.LogError($"Warehouse did not confirm the availability in time");
                     })
                     .PublishAsync(context => context.Init<ShippingShipmentNotSent>(new { CorrelationId = context.Message.ShippingId }))
                     .Finalize()
@@ -196,10 +199,12 @@ namespace Shipping
 
         class ShippingConfirmationConsumer : IConsumer<ShippingConfirmation>
         {
+            private readonly ILogger<ShippingConfirmationConsumer> _logger;
             private ShippingContext _shippingContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public ShippingConfirmationConsumer(ShippingContext shippingContext, IPublishEndpoint publishEndpoint)
+            public ShippingConfirmationConsumer(ShippingContext shippingContext, IPublishEndpoint publishEndpoint, ILogger<ShippingConfirmationConsumer> logger)
             {
+                _logger = logger;
                 _publishEndpoint = publishEndpoint;
                 _shippingContext = shippingContext;
             }
@@ -212,12 +217,12 @@ namespace Shipping
 
                 if (method == null)
                 {
-                    Console.WriteLine($"Method={deliveryMethod} was invalid for request {context.Message.CorrelationId}.");
+                    _logger.LogError($"Method={deliveryMethod} was invalid for request {context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<ShippingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
-                    Console.WriteLine($"Delivery information is correct for request {context.Message.CorrelationId}.");
+                    _logger.LogInformation($"Delivery information is correct for request {context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<ShippingConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }

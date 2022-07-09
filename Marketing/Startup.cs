@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Marketing.Models;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace Marketing
 {
@@ -25,9 +26,11 @@ namespace Marketing
 
         class NewBookMarketingInfoConsumer : IConsumer<NewBookMarketingInfo>
         {
+            private readonly ILogger<NewBookMarketingInfoConsumer> _logger;
             private BookContext _bookContext;
-            public NewBookMarketingInfoConsumer(BookContext bookContext)
+            public NewBookMarketingInfoConsumer(BookContext bookContext, ILogger<NewBookMarketingInfoConsumer> logger)
             {
+                _logger = logger;
                 _bookContext = bookContext;
             }
             public async Task Consume(ConsumeContext<NewBookMarketingInfo> context)
@@ -38,7 +41,7 @@ namespace Marketing
                 Book book = new Book(bookID, bookDiscount);
                 _bookContext.Add(book);
                 _bookContext.SaveChanges();
-                Console.WriteLine($"New book registered: {bookID}, discount={bookDiscount}");
+                _logger.LogInformation($"New book registered: {bookID}, discount={bookDiscount}");
             }
         }
 
@@ -100,10 +103,12 @@ namespace Marketing
 
         class MarketingConfirmationConsumer : IConsumer<MarketingConfirmation>
         {
+            private readonly ILogger<MarketingConfirmationConsumer> _logger;
             private BookContext _bookContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public MarketingConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            public MarketingConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<MarketingConfirmationConsumer> logger)
             {
+                _logger = logger;
                 _publishEndpoint = publishEndpoint;
                 _bookContext = bookContext;
             }
@@ -114,18 +119,18 @@ namespace Marketing
                 Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(context.Message.BookID));
                 if (book == null)
                 {
-                    Console.WriteLine($"Book with BookID{context.Message.BookID}, discount={bookDiscount} was not found for request={context.Message.CorrelationId}.");
+                    _logger.LogError($"Book with BookID{context.Message.BookID}, discount={bookDiscount} was not found for request={context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<MarketingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
 
                 }
                 else if (bookDiscount != book.Discount)
                 {
-                    Console.WriteLine($"Wrong discount for book with BookID{context.Message.BookID}, discount={bookDiscount} for request={context.Message.CorrelationId}.");
+                    _logger.LogError($"Wrong discount for book with BookID{context.Message.BookID}, discount={bookDiscount} for request={context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<MarketingConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
-                    Console.WriteLine($"Book with BookID{context.Message.BookID}, discount={bookDiscount} information is valid.");
+                    _logger.LogInformation($"Book with BookID{context.Message.BookID}, discount={bookDiscount} information is valid.");
                     await _publishEndpoint.Publish<MarketingConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }

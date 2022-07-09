@@ -12,6 +12,7 @@ using Warehouse.Models;
 using Microsoft.EntityFrameworkCore;
 using Common;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Warehouse
 {
@@ -87,10 +88,12 @@ namespace Warehouse
         }
         class WarehouseDeliveryRequestConsumer : IConsumer<WarehouseDeliveryStart>
         {
+            private readonly ILogger<WarehouseDeliveryRequestConsumer> _logger;
             private BookContext _bookContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public WarehouseDeliveryRequestConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            public WarehouseDeliveryRequestConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<WarehouseDeliveryRequestConsumer> logger)
             {
+                _logger = logger;
                 _publishEndpoint = publishEndpoint;
                 _bookContext = bookContext;
             }
@@ -103,30 +106,30 @@ namespace Warehouse
                 bool valid = true;
                 if (book == null)
                 {
-                    Console.WriteLine($"No book for reservation with ID={context.Message.CorrelationId} found. BookID={bookID}, quantity={bookQuantity}.");
+                    _logger.LogError($"No book for reservation with ID={context.Message.CorrelationId} found. BookID={bookID}, quantity={bookQuantity}.");
                     valid = false;
                 }
 
                 Reservation reservation = _bookContext.ReservationItems.SingleOrDefault(r => r.ID.Equals(context.Message.CorrelationId.ToString()));
                 if (reservation == null)
                 {
-                    Console.WriteLine($"No reservation with ID={context.Message.CorrelationId} found. BookID={bookID}, quantity={bookQuantity}.");
+                    _logger.LogError($"No reservation with ID={context.Message.CorrelationId} found. BookID={bookID}, quantity={bookQuantity}.");
                     valid = false;
                 }
                 else if (reservation.IsRedeemed)
                 {
-                    Console.WriteLine($"Reservation with ID={context.Message.CorrelationId} is redeemed. BookID={bookID}, quantity={bookQuantity}.");
+                    _logger.LogError($"Reservation with ID={context.Message.CorrelationId} is redeemed. BookID={bookID}, quantity={bookQuantity}.");
                     valid = false;
                 }
                 else if (reservation.IsCancelled)
                 {
-                    Console.WriteLine($"Reservation with ID={context.Message.CorrelationId} is cancelled. BookID={bookID}, quantity={bookQuantity}.");
+                    _logger.LogError($"Reservation with ID={context.Message.CorrelationId} is cancelled. BookID={bookID}, quantity={bookQuantity}.");
                     valid = false;
                 }
 
                 if (valid)
                 {
-                    Console.WriteLine($"Warehouse is able to reddem reservation with ID={context.Message.CorrelationId}. BookID={bookID}, quantity={bookQuantity}.");
+                    _logger.LogInformation($"Warehouse is able to reddem reservation with ID={context.Message.CorrelationId}. BookID={bookID}, quantity={bookQuantity}.");
                     reservation.IsRedeemed = true;
                     _bookContext.SaveChanges();
                     await _publishEndpoint.Publish<WarehouseDeliveryStartConfirmation>(new { CorrelationId = context.Message.CorrelationId });
@@ -139,10 +142,12 @@ namespace Warehouse
         }
         class WarehouseConfirmationConsumer : IConsumer<WarehouseConfirmation>
         {
+            private readonly ILogger<WarehouseConfirmationConsumer> _logger;
             private BookContext _bookContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public WarehouseConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            public WarehouseConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<WarehouseConfirmationConsumer> logger)
             {
+                _logger = logger;
                 _publishEndpoint = publishEndpoint;
                 _bookContext = bookContext;
             }
@@ -156,17 +161,17 @@ namespace Warehouse
                 bool valid = true;
                 if (book == null)
                 {
-                    Console.WriteLine($"No book with provided info found.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
+                    _logger.LogError($"No book with provided info found.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
                     valid = false;
                 }
                 else if (book.Quantity < bookQuantity)
                 {
-                    Console.WriteLine($"Warehouse has less amount of book then requested.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
+                    _logger.LogError($"Warehouse has less amount of book then requested.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
                     valid = false;
                 }
                 else if (!book.Name.Equals(bookName))
                 {
-                    Console.WriteLine($"Requested book has wrong name.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
+                    _logger.LogError($"Requested book has wrong name.BookID={bookID}, name={bookName}, quantity={bookQuantity}.");
                     valid = false;
                 }
 
@@ -175,7 +180,7 @@ namespace Warehouse
                     _bookContext.ReservationItems.Add(new Reservation(context.Message.CorrelationId.ToString(), book.ID, context.Message.BookQuantity, false, false));
                     book.Quantity -= bookQuantity;
                     _bookContext.SaveChanges();
-                    Console.WriteLine($"There is {bookQuantity} amount of BookID={bookID}, name={bookName}. Order can be made");
+                    _logger.LogInformation($"There is {bookQuantity} amount of BookID={bookID}, name={bookName}. Order can be made");
                     await _publishEndpoint.Publish<WarehouseConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
@@ -186,10 +191,12 @@ namespace Warehouse
         }
         class OrderCancelConsumer : IConsumer<OrderCancel>
         {
+            private readonly ILogger<OrderCancelConsumer> _logger;
             private BookContext _bookContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public OrderCancelConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            public OrderCancelConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<OrderCancelConsumer> logger)
             {
+                _logger = logger;
                 _publishEndpoint = publishEndpoint;
                 _bookContext = bookContext;
             }
@@ -199,7 +206,7 @@ namespace Warehouse
 
                 if (reservation != null)
                 {
-                    Console.WriteLine($"Cancelled reservation for {context.Message.CorrelationId}.");
+                    _logger.LogInformation($"Cancelled reservation for {context.Message.CorrelationId}.");
                     reservation.IsCancelled = true;
                     Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(reservation.BookID));
                     if (book != null) book.Quantity += reservation.Quantity;
@@ -207,7 +214,7 @@ namespace Warehouse
                 }
                 else
                 {
-                    Console.WriteLine($"Cannot cancel reservation for {context.Message.CorrelationId}, because there is no such a reservation");
+                    _logger.LogError($"Cannot cancel reservation for {context.Message.CorrelationId}, because there is no such a reservation");
                 }
             }
         }

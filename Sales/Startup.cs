@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Sales.Models;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace Sales
 {
@@ -25,9 +26,11 @@ namespace Sales
 
         class NewBookSalesInfoConsumer : IConsumer<NewBookSalesInfo>
         {
+            private readonly ILogger<NewBookSalesInfoConsumer> _logger;
             private BookContext _bookContext;
-            public NewBookSalesInfoConsumer(BookContext bookContext)
+            public NewBookSalesInfoConsumer(BookContext bookContext, ILogger<NewBookSalesInfoConsumer> logger)
             {
+                _logger = logger;
                 _bookContext = bookContext;
             }
             public async Task Consume(ConsumeContext<NewBookSalesInfo> context)
@@ -37,7 +40,7 @@ namespace Sales
                 Book book = new Book(bookID, bookPrice);
                 _bookContext.Add(book);
                 _bookContext.SaveChanges();
-                Console.WriteLine($"New book registered: {bookID}, price={bookPrice}");
+                _logger.LogInformation($"New book registered: {bookID}, price={bookPrice}");
             }
         }
 
@@ -99,10 +102,12 @@ namespace Sales
 
         class SalesConfirmationConsumer : IConsumer<SalesConfirmation>
         {
+            private readonly ILogger<SalesConfirmationConsumer> _logger;
             private BookContext _bookContext;
             public readonly IPublishEndpoint _publishEndpoint;
-            public SalesConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint)
+            public SalesConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<SalesConfirmationConsumer> logger)
             {
+                _logger = logger;
                 _publishEndpoint = publishEndpoint;
                 _bookContext = bookContext;
             }
@@ -114,17 +119,17 @@ namespace Sales
 
                 if (book == null)
                 {
-                    Console.WriteLine($"Requested book with BookID={context.Message.BookID}, price={bookPrice} was not found for request={context.Message.CorrelationId}.");
+                    _logger.LogError($"Requested book with BookID={context.Message.BookID}, price={bookPrice} was not found for request={context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<SalesConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else if (bookPrice != book.Price)
                 {
-                    Console.WriteLine($"Wrong price provided for book with BookID={context.Message.BookID}, price={bookPrice} for request={context.Message.CorrelationId}.");
+                    _logger.LogError($"Wrong price provided for book with BookID={context.Message.BookID}, price={bookPrice} for request={context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<SalesConfirmationRefuse>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
                 {
-                    Console.WriteLine($"Correct information for book with BookID={context.Message.BookID}, price={bookPrice} for request={context.Message.CorrelationId}.");
+                    _logger.LogInformation($"Correct information for book with BookID={context.Message.BookID}, price={bookPrice} for request={context.Message.CorrelationId}.");
                     await _publishEndpoint.Publish<SalesConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
             }
