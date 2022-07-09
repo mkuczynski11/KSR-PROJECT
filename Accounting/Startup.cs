@@ -33,11 +33,7 @@ namespace Accounting
             services.AddMassTransit(x =>
             {
                 x.AddSagaStateMachine<InvoiceSaga, InvoiceSagaData>()
-                    .InMemoryRepository()
-                    .Endpoint(e =>
-                    {
-                        e.Name = rabbitConfiguration.ReceiveEndpoint;
-                    });
+                    .InMemoryRepository();
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>

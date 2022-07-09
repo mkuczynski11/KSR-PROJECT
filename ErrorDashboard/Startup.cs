@@ -24,19 +24,6 @@ namespace ErrorDashboard
 
         public IConfiguration Configuration { get; }
 
-        private void PrintDetails(ConsumeContext<Fault> context)
-        {
-            foreach (KeyValuePair<string, object> header in context.Headers.GetAll())
-            {
-                Console.Out.WriteLine($"\t{header.Key}: {header.Value}");
-            }
-            Console.Out.WriteLine("\tExceptions:");
-            foreach (ExceptionInfo ex in context.Message.Exceptions)
-            {
-                Console.Out.WriteLine($"{ex.StackTrace}");
-            }
-        }
-
         public void ConfigureServices(IServiceCollection services)
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
@@ -54,263 +41,70 @@ namespace ErrorDashboard
 
                     cfg.ReceiveEndpoint("error-dashboard", ep =>
                     {
-                        ep.Handler<Fault<NewBookSalesInfo>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<NewBookMarketingInfo>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<AccountingInvoicePaymentTimeoutExpired>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ContactOrderClientConfirmationTimeoutExpired>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ContactOrderPaymentTimeoutExpired>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ContactShipmentTimeoutExpired>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ContactConfirmationConfirmedByAllParties>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ContactConfirmationRefusedByAtLeastOneParty>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<OrderStart>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<OrderCancel>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ClientConfirmationAccept>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ClientConfirmationRefuse>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<WarehouseConfirmation>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<WarehouseConfirmationAccept>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<WarehouseConfirmationRefuse>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<SalesConfirmation>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<SalesConfirmationAccept>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<SalesConfirmationRefuse>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<MarketingConfirmation>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<MarketingConfirmationAccept>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<MarketingConfirmationRefuse>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ShippingConfirmation>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ShippingConfirmationAccept>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ShippingConfirmationRefuse>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<AccountingInvoiceStart>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<AccountingInvoicePublish>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<AccountingInvoiceCancel>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<AccountingInvoicePaid>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<AccountingInvoiceNotPaid>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ShippingShipmentStart>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ShippingShipmentSent>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ShippingShipmentNotSent>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<ShippingWarehouseDeliveryConfirmationTimeoutExpired>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<WarehouseDeliveryStart>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<WarehouseDeliveryStartConfirmation>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
-                        ep.Handler<Fault<WarehouseDeliveryStartRejection>>(context =>
-                        {
-                            Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n" +
-                                $"\t{context.Message.Message.Print()}");
-                            PrintDetails(context);
-                            return Task.CompletedTask;
-                        });
+                        ep.ConfigureConsumer<FaultConsumer<NewBookSalesInfo>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<NewBookMarketingInfo>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<AccountingInvoicePaymentTimeoutExpired>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ContactOrderClientConfirmationTimeoutExpired>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ContactOrderPaymentTimeoutExpired>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ContactShipmentTimeoutExpired>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ContactConfirmationConfirmedByAllParties>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ContactConfirmationRefusedByAtLeastOneParty>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<OrderStart>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<OrderCancel>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ClientConfirmationAccept>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ClientConfirmationRefuse>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<WarehouseConfirmation>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<WarehouseConfirmationAccept>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<WarehouseConfirmationRefuse>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<SalesConfirmation>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<SalesConfirmationAccept>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<SalesConfirmationRefuse>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<MarketingConfirmation>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<MarketingConfirmationAccept>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<MarketingConfirmationRefuse>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ShippingConfirmation>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ShippingConfirmationAccept>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ShippingConfirmationRefuse>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<AccountingInvoiceStart>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<AccountingInvoicePublish>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<AccountingInvoiceCancel>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<AccountingInvoicePaid>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<AccountingInvoiceNotPaid>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ShippingShipmentStart>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ShippingShipmentSent>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ShippingShipmentNotSent>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<ShippingWarehouseDeliveryConfirmationTimeoutExpired>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<WarehouseDeliveryStart>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<WarehouseDeliveryStartConfirmation>>(context);
+                        ep.ConfigureConsumer<FaultConsumer<WarehouseDeliveryStartRejection>>(context);
                     });
                 });
             });
         }
 
         public void Configure() { }
+
+        class FaultConsumer<T> : IConsumer<Fault<T>>
+        {
+            public Task Consume(ConsumeContext<Fault<T>> context)
+            {
+                Console.Out.WriteLine($"[ERROR] {context.Message.Timestamp}: \n");
+                PrintDetails(context);
+                return Task.CompletedTask;
+            }
+
+            private void PrintDetails(ConsumeContext<Fault> context)
+            {
+                foreach (KeyValuePair<string, object> header in context.Headers.GetAll())
+                {
+                    Console.Out.WriteLine($"\t{header.Key}: {header.Value}");
+                }
+                Console.Out.WriteLine("\tExceptions:");
+                foreach (ExceptionInfo ex in context.Message.Exceptions)
+                {
+                    Console.Out.WriteLine($"{ex.StackTrace}");
+                }
+            }
+        }
     }
 }
