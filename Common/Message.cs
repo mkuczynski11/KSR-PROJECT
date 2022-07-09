@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 
 namespace Common
 {
-    public interface NewBookSalesInfo
+    public interface BaseMessage { }
+    public interface NewBookSalesInfo : BaseMessage
     {
         string ID { get; set; }
         double price { get; set; }
@@ -18,7 +19,7 @@ namespace Common
                 $"price={price}}}";
         }
     }
-    public interface NewBookMarketingInfo
+    public interface NewBookMarketingInfo : BaseMessage
     {
         string ID { get; set; }
         double discount { get; set; }
@@ -31,7 +32,7 @@ namespace Common
     }
 
     /* INVOICE SAGA SECTION */
-    public interface AccountingInvoicePaymentTimeoutExpired
+    public interface AccountingInvoicePaymentTimeoutExpired : BaseMessage
     {
         Guid InvoiceId { get; }
         string Print()
@@ -43,7 +44,7 @@ namespace Common
     /* INVOICE SAGA SECTION END */
 
     /* ORDER SAGA SECTION */
-    public interface ContactOrderClientConfirmationTimeoutExpired
+    public interface ContactOrderClientConfirmationTimeoutExpired : BaseMessage
     {
         Guid OrderId { get; }
         string Print()
@@ -52,7 +53,7 @@ namespace Common
                 $"OrderId={OrderId}}}";
         }
     }
-    public interface ContactOrderServicesConfirmationTimeoutExpired
+    public interface ContactOrderServicesConfirmationTimeoutExpired : BaseMessage
     {
         Guid OrderId { get; }
         string Print()
@@ -61,7 +62,7 @@ namespace Common
                 $"OrderId={OrderId}}}";
         }
     }
-    public interface ContactOrderPaymentTimeoutExpired
+    public interface ContactOrderPaymentTimeoutExpired : BaseMessage
     {
         Guid OrderId { get; }
         string Print()
@@ -70,7 +71,7 @@ namespace Common
                 $"OrderId={OrderId}}}";
         }
     }
-    public interface ContactShipmentTimeoutExpired
+    public interface ContactShipmentTimeoutExpired : BaseMessage
     {
         Guid OrderId { get; }
         string Print()
@@ -79,7 +80,7 @@ namespace Common
                 $"OrderId={OrderId}}}";
         }
     }
-    public interface ContactConfirmationConfirmedByAllParties : CorrelatedBy<Guid>
+    public interface ContactConfirmationConfirmedByAllParties : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -87,7 +88,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface ContactConfirmationRefusedByAtLeastOneParty : CorrelatedBy<Guid>
+    public interface ContactConfirmationRefusedByAtLeastOneParty : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -95,7 +96,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface OrderStart : CorrelatedBy<Guid>
+    public interface OrderStart : CorrelatedBy<Guid>, BaseMessage
     {
         string BookID { get; set; }
         string BookName { get; set; }
@@ -117,7 +118,7 @@ namespace Common
                 $"DeliveryPrice={DeliveryPrice}}}";
         }
     }
-    public interface OrderCancel : CorrelatedBy<Guid>
+    public interface OrderCancel : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -125,7 +126,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface ClientConfirmationAccept : CorrelatedBy<Guid>
+    public interface ClientConfirmationAccept : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -133,7 +134,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface ClientConfirmationRefuse : CorrelatedBy<Guid>
+    public interface ClientConfirmationRefuse : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -141,7 +142,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface WarehouseConfirmation : CorrelatedBy<Guid>
+    public interface WarehouseConfirmation : CorrelatedBy<Guid>, BaseMessage
     {
         string BookID { get; set; }
         string BookName { get; set; }
@@ -155,7 +156,7 @@ namespace Common
                 $"BookQuantity={BookQuantity}}}";
         }
     }
-    public interface WarehouseConfirmationAccept : CorrelatedBy<Guid>
+    public interface WarehouseConfirmationAccept : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -163,7 +164,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface WarehouseConfirmationRefuse : CorrelatedBy<Guid>
+    public interface WarehouseConfirmationRefuse : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -171,7 +172,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface SalesConfirmation : CorrelatedBy<Guid>
+    public interface SalesConfirmation : CorrelatedBy<Guid>, BaseMessage
     {
         string BookID { get; set; }
         double BookPrice { get; set; }
@@ -183,7 +184,7 @@ namespace Common
                 $"BookPrice={BookPrice}}}";
         }
     }
-    public interface SalesConfirmationAccept : CorrelatedBy<Guid>
+    public interface SalesConfirmationAccept : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -191,7 +192,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface SalesConfirmationRefuse : CorrelatedBy<Guid>
+    public interface SalesConfirmationRefuse : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -199,7 +200,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface MarketingConfirmation : CorrelatedBy<Guid>
+    public interface MarketingConfirmation : CorrelatedBy<Guid>, BaseMessage
     {
         string BookID { get; set; }
         double BookDiscount { get; set; }
@@ -211,7 +212,7 @@ namespace Common
                 $"BookDiscount={BookDiscount}}}";
         }
     }
-    public interface MarketingConfirmationAccept : CorrelatedBy<Guid>
+    public interface MarketingConfirmationAccept : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -219,7 +220,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface MarketingConfirmationRefuse : CorrelatedBy<Guid>
+    public interface MarketingConfirmationRefuse : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -227,7 +228,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface ShippingConfirmation : CorrelatedBy<Guid>
+    public interface ShippingConfirmation : CorrelatedBy<Guid>, BaseMessage
     {
         string DeliveryMethod { get; set; }
         double DeliveryPrice { get; set; }
@@ -239,7 +240,7 @@ namespace Common
                 $"DeliveryPrice={DeliveryPrice}}}";
         }
     }
-    public interface ShippingConfirmationAccept : CorrelatedBy<Guid>
+    public interface ShippingConfirmationAccept : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -247,7 +248,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface ShippingConfirmationRefuse : CorrelatedBy<Guid>
+    public interface ShippingConfirmationRefuse : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -255,7 +256,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface AccountingInvoiceStart : CorrelatedBy<Guid>
+    public interface AccountingInvoiceStart : CorrelatedBy<Guid>, BaseMessage
     {
         string BookID { get; set; }
         string BookName { get; set; }
@@ -277,7 +278,7 @@ namespace Common
                 $"DeliveryPrice={DeliveryPrice}}}";
         }
     }
-    public interface AccountingInvoicePublish : CorrelatedBy<Guid>
+    public interface AccountingInvoicePublish : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -285,7 +286,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface AccountingInvoiceCancel : CorrelatedBy<Guid>
+    public interface AccountingInvoiceCancel : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -293,7 +294,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface AccountingInvoicePaid : CorrelatedBy<Guid>
+    public interface AccountingInvoicePaid : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -301,7 +302,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface AccountingInvoiceNotPaid : CorrelatedBy<Guid>
+    public interface AccountingInvoiceNotPaid : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -309,7 +310,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface ShippingShipmentStart : CorrelatedBy<Guid>
+    public interface ShippingShipmentStart : CorrelatedBy<Guid>, BaseMessage
     {
         string BookID { get; set; }
         string DeliveryMethod { get; set; }
@@ -325,7 +326,7 @@ namespace Common
                 $"DeliveryPrice={DeliveryPrice}}}";
         }
     }
-    public interface ShippingShipmentSent : CorrelatedBy<Guid>
+    public interface ShippingShipmentSent : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -333,7 +334,7 @@ namespace Common
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface ShippingShipmentNotSent : CorrelatedBy<Guid>
+    public interface ShippingShipmentNotSent : CorrelatedBy<Guid>, BaseMessage
     {
         string Print()
         {
@@ -343,7 +344,7 @@ namespace Common
     }
     /* ORDER SAGA SECTION END*/
 
-    public interface ShippingWarehouseDeliveryConfirmationTimeoutExpired
+    public interface ShippingWarehouseDeliveryConfirmationTimeoutExpired : BaseMessage
     {
         Guid ShippingId { get; }
         string Print()
@@ -352,8 +353,8 @@ namespace Common
                 $"ShippingId={ShippingId}}}";
         }
     }
-    public interface WarehouseDeliveryStart : CorrelatedBy<Guid>
-    {
+    public interface WarehouseDeliveryStart : CorrelatedBy<Guid>, BaseMessage
+{
         string BookID { get; set; }
         int BookQuantity { get; set; }
         string Print()
@@ -364,16 +365,16 @@ namespace Common
                 $"BookQuantity={BookQuantity}}}";
         }
     }
-    public interface WarehouseDeliveryStartConfirmation : CorrelatedBy<Guid>
-    {
+    public interface WarehouseDeliveryStartConfirmation : CorrelatedBy<Guid>, BaseMessage
+{
         string Print()
         {
             return $"WarehouseDeliveryStartConfirmation{{" +
                 $"CorrelationId={CorrelationId}}}";
         }
     }
-    public interface WarehouseDeliveryStartRejection : CorrelatedBy<Guid>
-    {
+    public interface WarehouseDeliveryStartRejection : CorrelatedBy<Guid>, BaseMessage
+{
         string Print()
         {
             return $"WarehouseDeliveryStartRejection{{" +
