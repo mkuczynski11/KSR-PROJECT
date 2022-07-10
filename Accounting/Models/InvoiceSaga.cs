@@ -109,6 +109,7 @@ namespace Accounting.Models
                     if (invoice != null)
                     {
                         invoice.IsPublic = false;
+                        invoice.IsCanceled = true;
                         collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), invoice);
                     }
                 })
