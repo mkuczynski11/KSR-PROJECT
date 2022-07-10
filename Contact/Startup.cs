@@ -7,7 +7,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
-using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 
 namespace Contact
@@ -55,9 +54,8 @@ namespace Contact
                 });
             });
 
-            services.AddDbContext<OrderContext>(opt => opt.UseInMemoryDatabase("ContactOrderList"));
             services.AddHealthChecks()
-                .AddDbContextCheck<OrderContext>()
+                .AddMongoDb(mongoDbConfiguration.Connection)
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();

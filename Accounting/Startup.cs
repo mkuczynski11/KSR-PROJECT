@@ -3,7 +3,6 @@ using Accounting.Models;
 using MassTransit;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -54,9 +53,8 @@ namespace Accounting
                 });
             });
 
-            services.AddDbContext<InvoiceContext>(opt => opt.UseInMemoryDatabase("AccountingInvoiceList"));
             services.AddHealthChecks()
-                .AddDbContextCheck<InvoiceContext>()
+                .AddMongoDb(mongoDbConfiguration.Connection)
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();

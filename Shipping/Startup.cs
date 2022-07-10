@@ -9,7 +9,6 @@ using System.Linq;
 
 using MassTransit;
 using Shipping.Models;
-using Microsoft.EntityFrameworkCore;
 using Common;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -70,9 +69,8 @@ namespace Shipping
                 });
             });
 
-            services.AddDbContext<ShippingContext>(opt => opt.UseInMemoryDatabase("ShippingInfo"));
             services.AddHealthChecks()
-                .AddDbContextCheck<ShippingContext>()
+                .AddMongoDb(mongoDbConfiguration.Connection)
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();

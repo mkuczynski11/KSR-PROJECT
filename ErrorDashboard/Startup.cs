@@ -52,6 +52,10 @@ namespace ErrorDashboard
 
         public void Configure(IApplicationBuilder app) 
         {
+            app.UseRouting();
+
+            app.UseAuthorization();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapHealthChecks("/health");

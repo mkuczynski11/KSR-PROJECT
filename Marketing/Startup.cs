@@ -8,7 +8,6 @@ using Marketing.Configuration;
 using MassTransit;
 using Common;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Marketing.Models;
 using System.Linq;
 using Microsoft.Extensions.Logging;
@@ -86,9 +85,8 @@ namespace Marketing
                 });
             });
 
-            services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("MarketingBookList"));
             services.AddHealthChecks()
-                .AddDbContextCheck<BookContext>()
+                .AddMongoDb(mongoDbConfiguration.Connection)
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();

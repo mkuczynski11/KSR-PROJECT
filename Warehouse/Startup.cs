@@ -9,7 +9,6 @@ using System.Linq;
 
 using MassTransit;
 using Warehouse.Models;
-using Microsoft.EntityFrameworkCore;
 using Common;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -68,9 +67,8 @@ namespace Warehouse
                 });
             });
 
-            services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("WarehouseBookAndReservationList"));
             services.AddHealthChecks()
-                .AddDbContextCheck<BookContext>()
+                .AddMongoDb(mongoDbConfiguration.Connection)
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();
