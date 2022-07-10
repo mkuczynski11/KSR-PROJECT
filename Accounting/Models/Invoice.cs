@@ -1,13 +1,24 @@
-﻿using System;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System;
 
 namespace Accounting.Models
 {
     public class Invoice
     {
+        [BsonId]
+        [BsonElement]
         public string ID { get; set; }
+
+        [BsonElement]
         public string Text { get; set; }
+
+        [BsonElement]
         public bool IsPaid { get; set; }
+
+        [BsonElement]
         public bool IsPublic { get; set; }
+
+        [BsonElement]
         public bool IsCanceled { get; set; }
 
         public Invoice()

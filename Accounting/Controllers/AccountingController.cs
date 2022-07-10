@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
+using Accounting.Configuration;
+using Microsoft.Extensions.Configuration;
 
 namespace Accounting.Controllers
 {
@@ -13,13 +16,15 @@ namespace Accounting.Controllers
     public class AccountingController : ControllerBase
     {
         private readonly ILogger<AccountingController> _logger;
-        private readonly InvoiceContext _invoiceContext;
+        private readonly MongoClient _mongoClient;
+        private readonly MongoDbConfiguration _mongoConf;
         public readonly IPublishEndpoint _publishEndpoint;
 
-        public AccountingController(IPublishEndpoint publishEndpoint, InvoiceContext invoiceContext, ILogger<AccountingController> logger)
+        public AccountingController(IPublishEndpoint publishEndpoint, MongoClient mongoClient, IConfiguration configuration, ILogger<AccountingController> logger)
         {
             _logger = logger;
-            _invoiceContext = invoiceContext;
+            _mongoClient = mongoClient;
+            _mongoConf = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
             _publishEndpoint = publishEndpoint;
         }
 
@@ -27,7 +32,11 @@ namespace Accounting.Controllers
         public ActionResult<InvoiceResponse> GetInvoice(string id)
         {
             _logger.LogInformation($"Invoice for order with ID:{id} requested");
-            Invoice invoice = _invoiceContext.InvoiceItems.SingleOrDefault(o => o.ID.Equals(id));
+
+            var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                .GetCollection<Invoice>(_mongoConf.CollectionName.Invoices);
+
+            Invoice invoice = collection.Find(o => o.ID.Equals(id)).SingleOrDefault();
             if (invoice == null) return NotFound();
             if (!invoice.IsPublic) return NoContent();
 
@@ -37,7 +46,10 @@ namespace Accounting.Controllers
         [HttpPost("invoices/{id}/pay")]
         public ActionResult PayInvoice(string id)
         {
-            Invoice invoice = _invoiceContext.InvoiceItems.SingleOrDefault(o => o.ID.Equals(id));
+            var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                .GetCollection<Invoice>(_mongoConf.CollectionName.Invoices);
+
+            Invoice invoice = collection.Find(o => o.ID.Equals(id)).SingleOrDefault();
             if (invoice == null) return NotFound();
             if (invoice.IsCanceled) return BadRequest();
             if (!invoice.IsPublic) return BadRequest();
@@ -46,8 +58,7 @@ namespace Accounting.Controllers
             {
                 invoice.IsPaid = true;
                 invoice.Text += "\nPAID";
-                _invoiceContext.Update(invoice);
-                _invoiceContext.SaveChanges();
+                collection.ReplaceOne(o => o.ID.Equals(id), invoice);
 
                 _publishEndpoint.Publish<AccountingInvoicePaid>(new
                 {

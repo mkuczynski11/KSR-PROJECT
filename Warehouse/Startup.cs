@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Common;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 
 namespace Warehouse
 {
@@ -29,6 +30,7 @@ namespace Warehouse
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
             var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
+            var mongoDbConfiguration = Configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             services.AddMassTransit(x =>
             {
@@ -70,6 +72,7 @@ namespace Warehouse
             services.AddHealthChecks()
                 .AddDbContextCheck<BookContext>()
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
+            services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();
         }
 
@@ -94,20 +97,28 @@ namespace Warehouse
         class WarehouseDeliveryRequestConsumer : IConsumer<WarehouseDeliveryStart>
         {
             private readonly ILogger<WarehouseDeliveryRequestConsumer> _logger;
-            private BookContext _bookContext;
+            private MongoClient _mongoClient;
+            private readonly MongoDbConfiguration _mongoConf;
             public readonly IPublishEndpoint _publishEndpoint;
-            public WarehouseDeliveryRequestConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<WarehouseDeliveryRequestConsumer> logger)
+            public WarehouseDeliveryRequestConsumer(MongoClient mongoClient, IPublishEndpoint publishEndpoint, ILogger<WarehouseDeliveryRequestConsumer> logger, IConfiguration configuration)
             {
                 _logger = logger;
                 _publishEndpoint = publishEndpoint;
-                _bookContext = bookContext;
+                _mongoClient = mongoClient;
+                _mongoConf = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
             }
             public async Task Consume(ConsumeContext<WarehouseDeliveryStart> context)
             {
                 var bookID = context.Message.BookID;
                 var bookQuantity = context.Message.BookQuantity;
 
-                Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(bookID));
+                var collectionBooks = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                    .GetCollection<Book>(_mongoConf.CollectionName.Books);
+
+                var collectionReservations = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                    .GetCollection<Reservation>(_mongoConf.CollectionName.Reservations);
+
+                Book book = collectionBooks.Find(b => b.ID.Equals(bookID)).SingleOrDefault();
                 bool valid = true;
                 if (book == null)
                 {
@@ -115,7 +126,7 @@ namespace Warehouse
                     valid = false;
                 }
 
-                Reservation reservation = _bookContext.ReservationItems.SingleOrDefault(r => r.ID.Equals(context.Message.CorrelationId.ToString()));
+                Reservation reservation = collectionReservations.Find(r => r.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                 if (reservation == null)
                 {
                     _logger.LogError($"No reservation with ID={context.Message.CorrelationId} found. BookID={bookID}, quantity={bookQuantity}.");
@@ -136,7 +147,7 @@ namespace Warehouse
                 {
                     _logger.LogInformation($"Warehouse is able to reddem reservation with ID={context.Message.CorrelationId}. BookID={bookID}, quantity={bookQuantity}.");
                     reservation.IsRedeemed = true;
-                    _bookContext.SaveChanges();
+                    collectionReservations.ReplaceOne(r => r.ID.Equals(context.Message.CorrelationId.ToString()), reservation);
                     await _publishEndpoint.Publish<WarehouseDeliveryStartConfirmation>(new { CorrelationId = context.Message.CorrelationId });
                 }
                 else
@@ -148,13 +159,15 @@ namespace Warehouse
         class WarehouseConfirmationConsumer : IConsumer<WarehouseConfirmation>
         {
             private readonly ILogger<WarehouseConfirmationConsumer> _logger;
-            private BookContext _bookContext;
+            private MongoClient _mongoClient;
+            private readonly MongoDbConfiguration _mongoConf;
             public readonly IPublishEndpoint _publishEndpoint;
-            public WarehouseConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<WarehouseConfirmationConsumer> logger)
+            public WarehouseConfirmationConsumer(MongoClient mongoClient, IPublishEndpoint publishEndpoint, ILogger<WarehouseConfirmationConsumer> logger, IConfiguration configuration)
             {
                 _logger = logger;
                 _publishEndpoint = publishEndpoint;
-                _bookContext = bookContext;
+                _mongoClient = mongoClient;
+                _mongoConf = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
             }
             public async Task Consume(ConsumeContext<WarehouseConfirmation> context)
             {
@@ -162,7 +175,13 @@ namespace Warehouse
                 var bookQuantity = context.Message.BookQuantity;
                 var bookName = context.Message.BookName;
 
-                Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(bookID));
+                var collectionBooks = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                    .GetCollection<Book>(_mongoConf.CollectionName.Books);
+
+                var collectionReservations = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                    .GetCollection<Reservation>(_mongoConf.CollectionName.Reservations);
+
+                Book book = collectionBooks.Find(b => b.ID.Equals(bookID)).SingleOrDefault();
                 bool valid = true;
                 if (book == null)
                 {
@@ -182,9 +201,9 @@ namespace Warehouse
 
                 if (valid)
                 {
-                    _bookContext.ReservationItems.Add(new Reservation(context.Message.CorrelationId.ToString(), book.ID, context.Message.BookQuantity, false, false));
+                    collectionReservations.InsertOne(new Reservation(context.Message.CorrelationId.ToString(), book.ID, context.Message.BookQuantity, false, false));
                     book.Quantity -= bookQuantity;
-                    _bookContext.SaveChanges();
+                    collectionBooks.ReplaceOne(b => b.ID.Equals(bookID), book);
                     _logger.LogInformation($"There is {bookQuantity} amount of BookID={bookID}, name={bookName}. Order can be made");
                     await _publishEndpoint.Publish<WarehouseConfirmationAccept>(new { CorrelationId = context.Message.CorrelationId });
                 }
@@ -197,25 +216,38 @@ namespace Warehouse
         class OrderCancelConsumer : IConsumer<OrderCancel>
         {
             private readonly ILogger<OrderCancelConsumer> _logger;
-            private BookContext _bookContext;
+            private MongoClient _mongoClient;
+            private readonly MongoDbConfiguration _mongoConf;
             public readonly IPublishEndpoint _publishEndpoint;
-            public OrderCancelConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<OrderCancelConsumer> logger)
+            public OrderCancelConsumer(MongoClient mongoClient, IPublishEndpoint publishEndpoint, ILogger<OrderCancelConsumer> logger, IConfiguration configuration)
             {
                 _logger = logger;
                 _publishEndpoint = publishEndpoint;
-                _bookContext = bookContext;
+                _mongoClient = mongoClient;
+                _mongoConf = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
             }
             public async Task Consume(ConsumeContext<OrderCancel> context)
             {
-                Reservation reservation = _bookContext.ReservationItems.SingleOrDefault(r => r.ID.Equals(context.Message.CorrelationId.ToString()));
+                var collectionBooks = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                    .GetCollection<Book>(_mongoConf.CollectionName.Books);
+
+                var collectionReservations = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                    .GetCollection<Reservation>(_mongoConf.CollectionName.Reservations);
+
+                Reservation reservation = collectionReservations.Find(r => r.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
 
                 if (reservation != null)
                 {
                     _logger.LogInformation($"Cancelled reservation for {context.Message.CorrelationId}.");
                     reservation.IsCancelled = true;
-                    Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(reservation.BookID));
-                    if (book != null) book.Quantity += reservation.Quantity;
-                    _bookContext.SaveChanges();
+                    collectionReservations.ReplaceOne(r => r.ID.Equals(context.Message.CorrelationId.ToString()), reservation);
+
+                    Book book = collectionBooks.Find(b => b.ID.Equals(reservation.BookID)).SingleOrDefault();
+                    if (book != null)
+                    {
+                        book.Quantity += reservation.Quantity;
+                        collectionBooks.ReplaceOne(b => b.ID.Equals(reservation.BookID), book);
+                    }
                 }
                 else
                 {

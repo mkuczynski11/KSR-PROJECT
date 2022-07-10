@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver;
 
 namespace Contact
 {
@@ -24,11 +25,17 @@ namespace Contact
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
             var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
+            var mongoDbConfiguration = Configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             services.AddMassTransit(x =>
             {
                 x.AddSagaStateMachine<OrderSaga, OrderSagaData>()
-                    .InMemoryRepository();
+                    .MongoDbRepository(r =>
+                    {
+                        r.Connection = mongoDbConfiguration.Connection;
+                        r.DatabaseName = mongoDbConfiguration.DatabaseName;
+                        r.CollectionName = mongoDbConfiguration.CollectionName.Saga;
+                    });
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
@@ -44,6 +51,7 @@ namespace Contact
                     });
                     cfg.UseScheduledRedelivery(r => r.Interval(2, TimeSpan.FromSeconds(rabbitConfiguration.DelayedRedeliverySeconds)));
                     cfg.UseInMemoryScheduler();
+                    
                 });
             });
 
@@ -51,6 +59,7 @@ namespace Contact
             services.AddHealthChecks()
                 .AddDbContextCheck<OrderContext>()
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
+            services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();
         }
 

@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Marketing.Models;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 
 namespace Marketing
 {
@@ -27,19 +28,24 @@ namespace Marketing
         class NewBookMarketingInfoConsumer : IConsumer<NewBookMarketingInfo>
         {
             private readonly ILogger<NewBookMarketingInfoConsumer> _logger;
-            private BookContext _bookContext;
-            public NewBookMarketingInfoConsumer(BookContext bookContext, ILogger<NewBookMarketingInfoConsumer> logger)
+            private MongoClient _mongoClient;
+            private readonly MongoDbConfiguration _mongoConf;
+            public NewBookMarketingInfoConsumer(MongoClient mongoClient, ILogger<NewBookMarketingInfoConsumer> logger, IConfiguration configuration)
             {
                 _logger = logger;
-                _bookContext = bookContext;
+                _mongoClient = mongoClient;
+                _mongoConf = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
             }
             public async Task Consume(ConsumeContext<NewBookMarketingInfo> context)
             {
                 var bookID = context.Message.ID;
                 var bookDiscount = context.Message.discount;
                 Book book = new Book(bookID, bookDiscount);
-                _bookContext.Add(book);
-                _bookContext.SaveChanges();
+
+                var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                .GetCollection<Book>(_mongoConf.CollectionName.Books);
+                collection.InsertOne(book);
+
                 _logger.LogInformation($"New book registered: {bookID}, discount={bookDiscount}");
             }
         }
@@ -48,6 +54,7 @@ namespace Marketing
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
             var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
+            var mongoDbConfiguration = Configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             services.AddMassTransit(x =>
             {
@@ -83,6 +90,7 @@ namespace Marketing
             services.AddHealthChecks()
                 .AddDbContextCheck<BookContext>()
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
+            services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();
         }
 
@@ -108,19 +116,24 @@ namespace Marketing
         class MarketingConfirmationConsumer : IConsumer<MarketingConfirmation>
         {
             private readonly ILogger<MarketingConfirmationConsumer> _logger;
-            private BookContext _bookContext;
+            private MongoClient _mongoClient;
+            private readonly MongoDbConfiguration _mongoConf;
             public readonly IPublishEndpoint _publishEndpoint;
-            public MarketingConfirmationConsumer(BookContext bookContext, IPublishEndpoint publishEndpoint, ILogger<MarketingConfirmationConsumer> logger)
+            public MarketingConfirmationConsumer(MongoClient mongoClient, IPublishEndpoint publishEndpoint, ILogger<MarketingConfirmationConsumer> logger, IConfiguration configuration)
             {
                 _logger = logger;
                 _publishEndpoint = publishEndpoint;
-                _bookContext = bookContext;
+                _mongoClient = mongoClient;
+                _mongoConf = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
             }
             public async Task Consume(ConsumeContext<MarketingConfirmation> context)
             {
                 double bookDiscount = context.Message.BookDiscount;
 
-                Book book = _bookContext.BookItems.SingleOrDefault(b => b.ID.Equals(context.Message.BookID));
+                var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                    .GetCollection<Book>(_mongoConf.CollectionName.Books);
+
+                Book book = collection.Find(o => o.ID.Equals(context.Message.BookID)).SingleOrDefault();
                 if (book == null)
                 {
                     _logger.LogError($"Book with BookID{context.Message.BookID}, discount={bookDiscount} was not found for request={context.Message.CorrelationId}.");

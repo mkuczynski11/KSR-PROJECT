@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,14 +8,32 @@ namespace Contact.Models
 {
     public class Order
     {
+        [BsonId]
+        [BsonElement]
         public string ID { get; set; }
+
+        [BsonElement]
         public bool IsConfirmedByClient { get; set; }
+
+        [BsonElement]
         public bool IsConfirmedByWarehouse { get; set; }
+
+        [BsonElement]
         public bool IsConfirmedBySales { get; set; }
+
+        [BsonElement]
         public bool IsConfirmedByMarketing { get; set; }
+
+        [BsonElement]
         public bool IsConfirmedByShipping { get; set; }
+
+        [BsonElement]
         public bool IsPaid { get; set; }
+
+        [BsonElement]
         public bool IsShipped { get; set; }
+
+        [BsonElement]
         public bool IsCanceled { get; set; }
 
         public Order() 

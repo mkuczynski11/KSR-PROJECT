@@ -13,6 +13,8 @@ using Microsoft.EntityFrameworkCore;
 using Common;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
+using System.Collections.Generic;
 
 namespace Shipping
 {
@@ -29,11 +31,17 @@ namespace Shipping
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
             var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
+            var mongoDbConfiguration = Configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             services.AddMassTransit(x =>
             {
                 x.AddSagaStateMachine<DeliveryStateMachine, DeliveryState>()
-                    .InMemoryRepository();
+                    .MongoDbRepository(r =>
+                    {
+                        r.Connection = mongoDbConfiguration.Connection;
+                        r.DatabaseName = mongoDbConfiguration.DatabaseName;
+                        r.CollectionName = mongoDbConfiguration.CollectionName.Saga;
+                    });
                 x.AddConsumer<ShippingConfirmationConsumer>();
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -66,12 +74,13 @@ namespace Shipping
             services.AddHealthChecks()
                 .AddDbContextCheck<ShippingContext>()
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
+            services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ShippingContext shippingContext)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, MongoClient mongoClient, IConfiguration configuration)
         {
-            AddShippingData(shippingContext);
+            AddShippingData(mongoClient, configuration);
 
             if (env.IsDevelopment())
             {
@@ -90,18 +99,20 @@ namespace Shipping
             });
         }
 
-        private static void AddShippingData(ShippingContext context)
+        private static void AddShippingData(MongoClient client, IConfiguration configuration)
         {
-            var dpdMethod = new Method("DPD", 10.0);
-            context.MethodItems.Add(dpdMethod);
+            var mongoDbConfiguration = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
-            var ppMethod = new Method("Poczta polska", 13.0);
-            context.MethodItems.Add(ppMethod);
+            var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                .GetCollection<Method>(mongoDbConfiguration.CollectionName.Methods);
 
-            var ooMethod = new Method("Odbiór osobisty", 0.0);
-            context.MethodItems.Add(ooMethod);
+            var methods = new List<Method>();
 
-            context.SaveChanges();
+            methods.Add(new Method("DPD", 10.0));
+            methods.Add(new Method("Poczta polska", 13.0));
+            methods.Add(new Method("Odbiór osobisty", 0.0));
+
+            collection.InsertMany(methods);
         }
 
         public class DeliveryStateMachine : MassTransitStateMachine<DeliveryState>, IDisposable
@@ -125,6 +136,7 @@ namespace Shipping
                 _scope = services.CreateScope();
 
                 var sagaConfiguration = configuration.GetSection("ShippingSaga").Get<ShippingSagaConfiguration>();
+                var mongoDbConfiguration = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
                 InstanceState(x => x.CurrentState);
 
@@ -139,9 +151,12 @@ namespace Shipping
                     .Then(context => {
                         _logger.LogInformation($"Got shipping request for book={context.Message.BookID}, quantity={context.Message.BookQuantity}, price={context.Message.DeliveryPrice}, method={context.Message.DeliveryMethod}");
                         Shipment shipment = new Shipment(context.Message.CorrelationId.ToString(), false, context.Message.BookID, context.Message.BookQuantity);
-                        var shipments = _scope.ServiceProvider.GetRequiredService<ShippingContext>();
-                        shipments.Add(shipment);
-                        shipments.SaveChanges();
+
+                        var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                        var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                            .GetCollection<Shipment>(mongoDbConfiguration.CollectionName.Shipments);
+
+                        collection.InsertOne(shipment);
 
                         context.Saga.BookID = context.Message.BookID;
                         context.Saga.BookQuantity = context.Message.BookQuantity;
@@ -160,12 +175,15 @@ namespace Shipping
                     When(WarehouseDeliveryConfirmationEvent)
                     .Unschedule(ShippingWarehouseDeliveryConfirmationTimeout)
                     .Then(context => {
-                        var shipments = _scope.ServiceProvider.GetRequiredService<ShippingContext>();
-                        Shipment shipment = shipments.ShipmentItems.SingleOrDefault(s => s.ID.Equals(context.Message.CorrelationId.ToString()));
+                        var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                        var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                            .GetCollection<Shipment>(mongoDbConfiguration.CollectionName.Shipments);
+
+                        Shipment shipment = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                         if (shipment != null)
                         {
                             shipment.IsConfirmedByWarehouse = true;
-                            shipments.SaveChanges();
+                            collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), shipment);
                         }
                         _logger.LogInformation($"Warehouse confirmed that this book is available");
                     })
@@ -193,9 +211,10 @@ namespace Shipping
             }
         }
 
-        public class DeliveryState : SagaStateMachineInstance
+        public class DeliveryState : SagaStateMachineInstance, ISagaVersion
         {
             public Guid CorrelationId { get; set; }
+            public int Version { get; set; }
             public Guid? ShippingWarehouseDeliveryConfirmationTimeoutId { get; set; }
             public string CurrentState { get; set; }
             public string BookID { get; set; }
@@ -205,20 +224,25 @@ namespace Shipping
         class ShippingConfirmationConsumer : IConsumer<ShippingConfirmation>
         {
             private readonly ILogger<ShippingConfirmationConsumer> _logger;
-            private ShippingContext _shippingContext;
+            private MongoClient _mongoClient;
+            private readonly MongoDbConfiguration _mongoConf;
             public readonly IPublishEndpoint _publishEndpoint;
-            public ShippingConfirmationConsumer(ShippingContext shippingContext, IPublishEndpoint publishEndpoint, ILogger<ShippingConfirmationConsumer> logger)
+            public ShippingConfirmationConsumer(MongoClient mongoClient, IPublishEndpoint publishEndpoint, ILogger<ShippingConfirmationConsumer> logger, IConfiguration configuration)
             {
                 _logger = logger;
                 _publishEndpoint = publishEndpoint;
-                _shippingContext = shippingContext;
+                _mongoClient = mongoClient;
+                _mongoConf = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
             }
             public async Task Consume(ConsumeContext<ShippingConfirmation> context)
             {
                 var deliveryPrice = context.Message.DeliveryPrice;
                 var deliveryMethod = context.Message.DeliveryMethod;
 
-                Method method = _shippingContext.MethodItems.SingleOrDefault(b => b.MethodValue.Equals(deliveryMethod));
+                var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                    .GetCollection<Method>(_mongoConf.CollectionName.Methods);
+
+                Method method = collection.Find(o => o.MethodValue.Equals(deliveryMethod)).SingleOrDefault();
 
                 if (method == null)
                 {
