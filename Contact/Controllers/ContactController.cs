@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
-
+using MongoDB.Driver;
+using Microsoft.Extensions.Configuration;
+using Contact.Configuration;
 
 namespace Contact.Controllers
 {
@@ -14,13 +16,15 @@ namespace Contact.Controllers
     public class ContactController : ControllerBase
     {
         private readonly ILogger<ContactController> _logger;
-        private readonly OrderContext _orderContext;
+        private readonly MongoClient _mongoClient;
+        private readonly MongoDbConfiguration _mongoConf;
         public readonly IPublishEndpoint _publishEndpoint;
 
-        public ContactController(IPublishEndpoint publishEndpoint, OrderContext orderContext, ILogger<ContactController> logger)
+        public ContactController(IPublishEndpoint publishEndpoint, MongoClient mongoClient, ILogger<ContactController> logger, IConfiguration configuration)
         {
             _logger = logger;
-            _orderContext = orderContext;
+            _mongoClient = mongoClient;
+            _mongoConf = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
             _publishEndpoint = publishEndpoint;
         }
 
@@ -32,8 +36,9 @@ namespace Contact.Controllers
 
             Order order = new Order(ID.ToString());
 
-            _orderContext.OrderItems.Add(order);
-            _orderContext.SaveChanges();
+            var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                .GetCollection<Order>(_mongoConf.CollectionName.Orders);
+            collection.InsertOne(order);
 
             _publishEndpoint.Publish<OrderStart>(new
             {
@@ -53,7 +58,10 @@ namespace Contact.Controllers
         [HttpPost("orders/{id}/confirm")]
         public ActionResult ConfirmOrder(string id)
         {
-            Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
+            var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                .GetCollection<Order>(_mongoConf.CollectionName.Orders);
+            Order order = collection.Find(o => o.ID.Equals(id)).SingleOrDefault();
+
             if (order == null) return NotFound();
 
             _publishEndpoint.Publish<ClientConfirmationAccept>(new
@@ -67,7 +75,10 @@ namespace Contact.Controllers
         [HttpPost("orders/{id}/cancel")]
         public ActionResult CancelOrder(string id)
         {
-            Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
+            var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                .GetCollection<Order>(_mongoConf.CollectionName.Orders);
+            Order order = collection.Find(o => o.ID.Equals(id)).SingleOrDefault();
+
             if (order == null) return NotFound();
 
             _publishEndpoint.Publish<ClientConfirmationRefuse>(new
@@ -82,7 +93,11 @@ namespace Contact.Controllers
         public ActionResult<OrderStatusResponse> GetStatus(string id)
         {
             _logger.LogInformation($"Order status with ID:{id} requested");
-            Order order = _orderContext.OrderItems.SingleOrDefault(o => o.ID.Equals(id));
+
+            var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
+                .GetCollection<Order>(_mongoConf.CollectionName.Orders);
+            Order order = collection.Find(o => o.ID.Equals(id)).SingleOrDefault();
+
             if (order == null) return NotFound();
 
             if (order.IsCanceled) return new OrderStatusResponse { Status = "Canceled" };

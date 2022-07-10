@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using MongoDB.Driver;
 using System;
 
 namespace Accounting
@@ -24,11 +25,17 @@ namespace Accounting
         {
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
             var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
+            var mongoDbConfiguration = Configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             services.AddMassTransit(x =>
             {
                 x.AddSagaStateMachine<InvoiceSaga, InvoiceSagaData>()
-                    .InMemoryRepository();
+                    .MongoDbRepository(r =>
+                    {
+                        r.Connection = mongoDbConfiguration.Connection;
+                        r.DatabaseName = mongoDbConfiguration.DatabaseName;
+                        r.CollectionName = mongoDbConfiguration.CollectionName.Saga;
+                    });
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitConfiguration.ServerAddress), hostConfigurator =>
@@ -47,7 +54,7 @@ namespace Accounting
                 });
             });
 
-            services.AddDbContext<InvoiceContext>(opt => opt.UseInMemoryDatabase("AccountingInvoiceList"));
+            services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();
         }
 

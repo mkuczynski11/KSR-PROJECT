@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -8,8 +9,11 @@ namespace Shipping.Models
 {
     public class Method
     {
-        [Key]
+        [BsonId]
+        [BsonElement]
         public string MethodValue { get; set; }
+
+        [BsonElement]
         public double Price { get; set; }
 
         public Method() { }
