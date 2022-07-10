@@ -4,6 +4,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
+    restart: always
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -12,6 +13,7 @@ services:
    build:
     context: ./
     dockerfile: ./Dockerfile.ErrorDashboard
+   restart: unless-stopped
    ports:
     - "86:80"
    depends_on:
@@ -21,6 +23,7 @@ services:
    build:
     context: ./
     dockerfile: ./Dockerfile.Shipping
+   restart: unless-stopped
    ports:
     - "85:80"
    depends_on:
@@ -30,6 +33,7 @@ services:
     build:
      context: ./
      dockerfile: ./Dockerfile.Accounting
+    restart: unless-stopped
     ports:
       - "84:80"
     depends_on:
@@ -39,6 +43,7 @@ services:
     build:
      context: ./
      dockerfile: ./Dockerfile.Contact
+    restart: unless-stopped
     ports:
       - "83:80"
     depends_on:
@@ -48,6 +53,7 @@ services:
     build:
      context: ./
      dockerfile: ./Dockerfile.Marketing
+    restart: unless-stopped
     ports:
       - "82:80"
     depends_on:
@@ -57,6 +63,7 @@ services:
     build:
      context: ./
      dockerfile: ./Dockerfile.Sales
+    restart: unless-stopped
     ports:
       - "81:80"
     depends_on:
@@ -66,6 +73,7 @@ services:
     build:
      context: ./
      dockerfile: ./Dockerfile.Warehouse
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
@@ -75,6 +83,7 @@ services:
     build:
      context: ./
      dockerfile: ./Dockerfile.ApiGateway
+    restart: always
     ports:
       - "8080:80"
 
@@ -97,6 +106,7 @@ services:
 
   elasticsearch:
    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.1
+   restart: always
    ports:
     - 9200:9200
    volumes:
@@ -109,6 +119,7 @@ services:
 
   kibana:
    image: docker.elastic.co/kibana/kibana:7.16.1
+   restart: always
    ports:
     - 5601:5601
    depends_on:

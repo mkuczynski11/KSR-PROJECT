@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 
 namespace Contact.Models
 {
@@ -82,6 +83,7 @@ namespace Contact.Models
             _scope = services.CreateScope();
 
             var sagaConfiguration = configuration.GetSection("OrderSaga").Get<OrderSagaConfiguration>();
+            var mongoDbConfiguration = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             InstanceState(x => x.CurrentState);
 
@@ -144,14 +146,15 @@ namespace Contact.Models
 
                     context.Saga.ClientResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedByClient = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
                     }
                 })
                 .PublishAsync(context => context.Init<WarehouseConfirmation>(new
@@ -205,15 +208,16 @@ namespace Contact.Models
 
                     context.Saga.ClientResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedByClient = false;
                         order.IsCanceled = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
                     }
                 })
                 .PublishAsync(context => context.Init<OrderCancel>(new
@@ -225,9 +229,11 @@ namespace Contact.Models
                 When(ContactOrderClientConfirmationTimeout.Received)
                 .Then(context =>
                 {
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.OrderId.ToString())).SingleOrDefault();
 
                     string message = $"Order ID={context.Message.OrderId}: " +
                         $"client confirmation time expired.";
@@ -235,8 +241,7 @@ namespace Contact.Models
                     if (order != null)
                     {
                         order.IsCanceled = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.OrderId.ToString()), order);
 
                         message += "\n" + order;
                     }
@@ -261,14 +266,15 @@ namespace Contact.Models
 
                     context.Saga.WarehouseResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedByWarehouse = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         if (context.Saga.AllResponded())
                         {
@@ -301,14 +307,15 @@ namespace Contact.Models
 
                     context.Saga.SalesResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedBySales = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         if (context.Saga.AllResponded())
                         {
@@ -341,14 +348,15 @@ namespace Contact.Models
 
                     context.Saga.MarketingResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedByMarketing = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         if (context.Saga.AllResponded())
                         {
@@ -381,14 +389,15 @@ namespace Contact.Models
 
                     context.Saga.ShippingResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedByShipping = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         if (context.Saga.AllResponded())
                         {
@@ -429,9 +438,11 @@ namespace Contact.Models
                 When(ContactOrderServicesConfirmationTimeout.Received)
                 .Then(context => 
                 {
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.OrderId.ToString())).SingleOrDefault();
 
                     string message = $"Order ID={context.Message.OrderId}: " +
                         $"services confirmation time expired.";
@@ -439,8 +450,7 @@ namespace Contact.Models
                     if (order != null)
                     {
                         order.IsCanceled = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.OrderId.ToString()), order);
 
                         message += "\n" + order;
                     }
@@ -465,14 +475,15 @@ namespace Contact.Models
 
                     context.Saga.WarehouseResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedByWarehouse = false;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         if (context.Saga.AllResponded())
                         {
@@ -491,14 +502,15 @@ namespace Contact.Models
 
                     context.Saga.SalesResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedBySales = false;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         if (context.Saga.AllResponded())
                         {
@@ -517,14 +529,15 @@ namespace Contact.Models
 
                     context.Saga.MarketingResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedByMarketing = false;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         if (context.Saga.AllResponded())
                         {
@@ -543,14 +556,15 @@ namespace Contact.Models
 
                     context.Saga.ShippingResponded = true;
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsConfirmedByShipping = false;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         if (context.Saga.AllResponded())
                         {
@@ -568,14 +582,15 @@ namespace Contact.Models
                     string message = $"Order ID={context.Message.CorrelationId}: " +
                             $"refused by at least one party.";
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsCanceled = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
 
                         message += "\n" + order;
                     }
@@ -601,14 +616,15 @@ namespace Contact.Models
                     _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"has been paid by client.");
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsPaid = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
                     }
 
                     context.Publish<ShippingShipmentStart>(new
@@ -632,15 +648,16 @@ namespace Contact.Models
                     _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"has not been paid by client.");
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsPaid = false;
                         order.IsCanceled = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
                     }
                 })
                 .PublishAsync(context => context.Init<OrderCancel>(new
@@ -654,15 +671,16 @@ namespace Contact.Models
                     Console.WriteLine($"Order ID={context.Message.OrderId}: " +
                             $"payment time expired.");
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.OrderId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsPaid = false;
                         order.IsCanceled = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.OrderId.ToString()), order);
                     }
                 })
                 .PublishAsync(context => context.Init<OrderCancel>(new
@@ -680,14 +698,15 @@ namespace Contact.Models
                     _logger.LogInformation($"Order ID={context.Message.CorrelationId}: " +
                             $"has been shipped to client.");
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsShipped = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
                     }
                 })
                 .Finalize(),
@@ -699,15 +718,16 @@ namespace Contact.Models
                     _logger.LogError($"Order ID={context.Message.CorrelationId}: " +
                             $"could not be shipped to client.");
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsShipped = false;
                         order.IsCanceled = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), order);
                     }
                 })
                 .Finalize(),
@@ -717,15 +737,16 @@ namespace Contact.Models
                     Console.WriteLine($"Order ID={context.Message.OrderId}: " +
                             $"shipment time expired.");
 
-                    var orders = _scope.ServiceProvider.GetRequiredService<OrderContext>();
-                    Order order = orders.OrderItems
-                            .SingleOrDefault(o => o.ID.Equals(context.Message.OrderId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Order>(mongoDbConfiguration.CollectionName.Orders);
+
+                    Order order = collection.Find(o => o.ID.Equals(context.Message.OrderId.ToString())).SingleOrDefault();
                     if (order != null)
                     {
                         order.IsShipped = false;
                         order.IsCanceled = true;
-                        orders.OrderItems.Update(order);
-                        orders.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.OrderId.ToString()), order);
                     }
                 })
                 .Finalize()
