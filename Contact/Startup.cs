@@ -48,6 +48,9 @@ namespace Contact
             });
 
             services.AddDbContext<OrderContext>(opt => opt.UseInMemoryDatabase("ContactOrderList"));
+            services.AddHealthChecks()
+                .AddDbContextCheck<OrderContext>()
+                .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddControllers();
         }
 
@@ -65,6 +68,8 @@ namespace Contact
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+
+                endpoints.MapHealthChecks("/health");
             });
         }
     }

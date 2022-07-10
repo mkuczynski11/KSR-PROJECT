@@ -35,7 +35,6 @@ namespace Marketing
             }
             public async Task Consume(ConsumeContext<NewBookMarketingInfo> context)
             {
-                throw new Exception("dupa");
                 var bookID = context.Message.ID;
                 var bookDiscount = context.Message.discount;
                 Book book = new Book(bookID, bookDiscount);
@@ -81,6 +80,9 @@ namespace Marketing
             });
 
             services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("MarketingBookList"));
+            services.AddHealthChecks()
+                .AddDbContextCheck<BookContext>()
+                .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddControllers();
         }
 
@@ -98,6 +100,8 @@ namespace Marketing
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+
+                endpoints.MapHealthChecks("/health");
             });
         }
 

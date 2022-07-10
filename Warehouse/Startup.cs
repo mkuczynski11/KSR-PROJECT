@@ -67,6 +67,9 @@ namespace Warehouse
             });
 
             services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("WarehouseBookAndReservationList"));
+            services.AddHealthChecks()
+                .AddDbContextCheck<BookContext>()
+                .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddControllers();
         }
 
@@ -84,6 +87,8 @@ namespace Warehouse
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+
+                endpoints.MapHealthChecks("/health");
             });
         }
         class WarehouseDeliveryRequestConsumer : IConsumer<WarehouseDeliveryStart>

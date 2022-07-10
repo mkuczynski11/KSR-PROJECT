@@ -48,6 +48,9 @@ namespace Accounting
             });
 
             services.AddDbContext<InvoiceContext>(opt => opt.UseInMemoryDatabase("AccountingInvoiceList"));
+            services.AddHealthChecks()
+                .AddDbContextCheck<InvoiceContext>()
+                .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddControllers();
         }
 
@@ -65,6 +68,8 @@ namespace Accounting
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+
+                endpoints.MapHealthChecks("/health");
             });
         }
     }

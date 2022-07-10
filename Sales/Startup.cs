@@ -80,6 +80,9 @@ namespace Sales
             });
 
             services.AddDbContext<BookContext>(opt => opt.UseInMemoryDatabase("SalesBookList"));
+            services.AddHealthChecks()
+                .AddDbContextCheck<BookContext>()
+                .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddControllers();
         }
 
@@ -97,6 +100,8 @@ namespace Sales
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+
+                endpoints.MapHealthChecks("/health");
             });
         }
 

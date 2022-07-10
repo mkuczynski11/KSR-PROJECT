@@ -63,6 +63,9 @@ namespace Shipping
             });
 
             services.AddDbContext<ShippingContext>(opt => opt.UseInMemoryDatabase("ShippingInfo"));
+            services.AddHealthChecks()
+                .AddDbContextCheck<ShippingContext>()
+                .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddControllers();
         }
 
@@ -82,6 +85,8 @@ namespace Shipping
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+
+                endpoints.MapHealthChecks("/health");
             });
         }
 
