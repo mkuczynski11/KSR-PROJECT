@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 
 namespace Accounting.Models
 {
@@ -39,6 +40,7 @@ namespace Accounting.Models
             _scope = services.CreateScope();
 
             var sagaConfiguration = configuration.GetSection("InvoiceSaga").Get<InvoiceSagaConfiguration>();
+            var mongoDbConfiguration = configuration.GetSection("MongoDb").Get<MongoDbConfiguration>();
 
             InstanceState(x => x.CurrentState);
 
@@ -63,9 +65,11 @@ namespace Accounting.Models
                         context.Message.DeliveryMethod,
                         context.Message.DeliveryPrice);
 
-                    var invoices = _scope.ServiceProvider.GetRequiredService<InvoiceContext>();
-                    invoices.InvoiceItems.Add(invoice);
-                    invoices.SaveChanges();
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Invoice>(mongoDbConfiguration.CollectionName.Invoices);
+
+                    collection.InsertOne(invoice);
                 })
                 .TransitionTo(AwaitingPublishing)
                 );
@@ -76,14 +80,15 @@ namespace Accounting.Models
                 {
                     _logger.LogInformation($"Order ID={context.Message.CorrelationId}, publishing invoice.");
 
-                    var invoices = _scope.ServiceProvider.GetRequiredService<InvoiceContext>();
-                    Invoice invoice = invoices.InvoiceItems
-                        .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Invoice>(mongoDbConfiguration.CollectionName.Invoices);
+
+                    Invoice invoice = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (invoice != null)
                     {
                         invoice.IsPublic = true;
-                        invoices.InvoiceItems.Update(invoice);
-                        invoices.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), invoice);
                     }
                 })
                 .Schedule(AccountingInvoicePaymentTimeout, context => context.Init<AccountingInvoicePaymentTimeoutExpired>(new
@@ -96,14 +101,15 @@ namespace Accounting.Models
                 {
                     logger.LogError($"Order ID={context.Message.CorrelationId}, publishing invoice canceled.");
 
-                    var invoices = _scope.ServiceProvider.GetRequiredService<InvoiceContext>();
-                    Invoice invoice = invoices.InvoiceItems
-                        .SingleOrDefault(o => o.ID.Equals(context.Message.CorrelationId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Invoice>(mongoDbConfiguration.CollectionName.Invoices);
+
+                    Invoice invoice = collection.Find(o => o.ID.Equals(context.Message.CorrelationId.ToString())).SingleOrDefault();
                     if (invoice != null)
                     {
                         invoice.IsPublic = false;
-                        invoices.InvoiceItems.Update(invoice);
-                        invoices.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.CorrelationId.ToString()), invoice);
                     }
                 })
                 .Finalize()
@@ -123,14 +129,15 @@ namespace Accounting.Models
                 {
                     _logger.LogError($"Order ID={context.Message.InvoiceId}, payment time expired.");
 
-                    var invoices = _scope.ServiceProvider.GetRequiredService<InvoiceContext>();
-                    Invoice invoice = invoices.InvoiceItems
-                        .SingleOrDefault(o => o.ID.Equals(context.Message.InvoiceId.ToString()));
+                    var client = _scope.ServiceProvider.GetRequiredService<MongoClient>();
+                    var collection = client.GetDatabase(mongoDbConfiguration.DatabaseName)
+                        .GetCollection<Invoice>(mongoDbConfiguration.CollectionName.Invoices);
+
+                    Invoice invoice = collection.Find(o => o.ID.Equals(context.Message.InvoiceId.ToString())).SingleOrDefault();
                     if (invoice != null)
                     {
                         invoice.IsCanceled = true;
-                        invoices.InvoiceItems.Update(invoice);
-                        invoices.SaveChanges();
+                        collection.ReplaceOne(o => o.ID.Equals(context.Message.InvoiceId.ToString()), invoice);
                     }
                 })
                 .PublishAsync(context => context.Init<AccountingInvoiceNotPaid>(new

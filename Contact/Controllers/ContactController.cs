@@ -38,7 +38,7 @@ namespace Contact.Controllers
 
             var collection = _mongoClient.GetDatabase(_mongoConf.DatabaseName)
                 .GetCollection<Order>(_mongoConf.CollectionName.Orders);
-            collection.InsertOneAsync(order);
+            collection.InsertOne(order);
 
             _publishEndpoint.Publish<OrderStart>(new
             {
