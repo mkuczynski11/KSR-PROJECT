@@ -65,9 +65,6 @@
         "Limit": 5,
         "HttpStatusCode": 429
       },
-      "FileCacheOptions": {
-        "TtlSeconds": 10
-      },
       "UpstreamPathTemplate": "/api/contact/orders/{id}/status",
       "UpstreamHttpMethod": [ "GET" ]
     },
@@ -91,9 +88,6 @@
         "PeriodTimespan": 1,
         "Limit": 5,
         "HttpStatusCode": 429
-      },
-      "FileCacheOptions": {
-        "TtlSeconds": 10
       },
       "UpstreamPathTemplate": "/api/accounting/invoices/{id}",
       "UpstreamHttpMethod": [ "GET" ]
@@ -141,9 +135,6 @@
         "Limit": 5,
         "HttpStatusCode": 429
       },
-      "FileCacheOptions": {
-        "TtlSeconds": 30
-      },
       "UpstreamPathTemplate": "/api/marketing/books",
       "UpstreamHttpMethod": [ "GET" ]
     },
@@ -179,9 +170,6 @@
         "PeriodTimespan": 1,
         "Limit": 5,
         "HttpStatusCode": 429
-      },
-      "FileCacheOptions": {
-        "TtlSeconds": 30
       },
       "UpstreamPathTemplate": "/api/sales/books",
       "UpstreamHttpMethod": [ "GET" ]
@@ -219,9 +207,6 @@
         "Limit": 5,
         "HttpStatusCode": 429
       },
-      "FileCacheOptions": {
-        "TtlSeconds": 30
-      },
       "UpstreamPathTemplate": "/api/shipping/{everything}",
       "UpstreamHttpMethod": [ "GET" ]
     },
@@ -257,9 +242,6 @@
         "PeriodTimespan": 1,
         "Limit": 5,
         "HttpStatusCode": 429
-      },
-      "FileCacheOptions": {
-        "TtlSeconds": 30
       },
       "UpstreamPathTemplate": "/api/warehouse/books",
       "UpstreamHttpMethod": [ "GET" ]
