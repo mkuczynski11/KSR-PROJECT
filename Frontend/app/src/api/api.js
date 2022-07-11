@@ -66,19 +66,6 @@ export async function getShippingMethods() {
   return res.data;
 }
 
-export async function getShippingPrices() {
-  console.log(`Fetching prices for shipping methods from ${API_URL}`);
-  let res = await axios
-    .get(`${API_URL}/shipping/price`, {
-      params: {},
-    })
-    .then((response) => {
-      return response;
-    });
-
-  return res.data;
-}
-
 export async function createOrder(order) {
   console.log(`Creating order for book ${order.book.name} ${API_URL}`);
   let res = await axios
@@ -92,6 +79,135 @@ export async function createOrder(order) {
         BookDiscount: order.book.discount,
         DeliveryMethod: order.deliveryMethod.method,
         DeliveryPrice: order.deliveryMethod.price,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response;
+    });
+  return res;
+}
+
+export async function createBook(book) {
+  console.log(`Creating book ${book.name} ${API_URL}`);
+  let res = await axios
+    .post(
+      `${API_URL}/warehouse/books/create`,
+      {
+        name: book.name,
+        price: book.price,
+        quantity: book.quantity,
+        discount: book.discount,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response;
+    });
+  return res;
+}
+
+export async function createShipping(method) {
+  console.log(`Creating shipping method ${method.name} ${API_URL}`);
+  let res = await axios
+    .post(
+      `${API_URL}/shipping/methods`,
+      {
+        Method: method.name,
+        Price: parseInt(method.price),
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response;
+    });
+  return res;
+}
+
+export async function deleteShippingMethod(method) {
+  console.log(`Deleting shipping method ${method.name} ${API_URL}`);
+  let res = await axios
+    .delete(
+      `${API_URL}/shipping/methods`,
+      {
+        data: {
+          Method: method.name,
+        },
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response;
+    });
+  return res;
+}
+
+export async function updateBookInWarehouse(book) {
+  console.log(`Updating book ${book.name} in warehouse ${API_URL}`);
+  let res = await axios
+    .put(
+      `${API_URL}/warehouse/books`,
+      {
+        ID: book.id,
+        name: book.name,
+        quantity: parseInt(book.quantity),
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response;
+    });
+  return res;
+}
+
+export async function updateBookPrice(book) {
+  console.log(`Updating price of book ${book.name} ${API_URL}`);
+  let res = await axios
+    .put(
+      `${API_URL}/sales/books`,
+      {
+        BookID: book.id,
+        BookPrice: parseInt(book.unitPrice),
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response;
+    });
+  return res;
+}
+
+export async function updateBookDiscount(book) {
+  console.log(`Updating discount of book ${book.name} ${API_URL}`);
+  let res = await axios
+    .put(
+      `${API_URL}/marketing/books`,
+      {
+        BookID: book.id,
+        BookDiscount: parseInt(book.discount),
       },
       {
         headers: {
@@ -150,7 +266,6 @@ export async function getOrderStatus(id) {
     .then((response) => {
       return response;
     });
-  console.log(res);
   return res.data;
 }
 
@@ -172,94 +287,23 @@ export async function payInvoice(invoice) {
   return res;
 }
 
-export async function getUserCars(user) {
-  console.log(`Fetching user cars from ${API_URL}`);
-  let res = await axios
-    .get(`${API_URL}/users/${user}/cars`, {
-      params: {},
-    })
-    .then((response) => {
-      return response;
-    });
-
-  return res.data;
-}
-
-export async function deleteUser(user) {
-  let res = await axios
-    .delete(`${API_URL}/users/${user}`, {
-      params: {},
-    })
-    .then((response) => {
-      return response;
-    });
-
-  return res.data;
-}
-
-export async function createUser(user) {
-  let res = await axios
-    .post(
-      `${API_URL}/users`,
-      {
-        login: user.login,
-        name: user.name,
-        surname: user.surname,
-        email: user.email,
-        password: user.password,
-        birthdate: user.birthdate,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    )
-    .then((response) => {
-      return response;
-    });
-
-  return res;
-}
-
-export async function editUser(user) {
-  let res = await axios
-    .put(
-      `${API_URL}/users/${user.login}`,
-      {
-        name: user.name,
-        surname: user.surname,
-        email: user.email,
-        password: user.password,
-        birthdate: user.birthdate,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    )
-    .then((response) => {
-      return response;
-    });
-
-  return res;
-}
-
 const api = {
   getBooks,
   getBook,
   getBooksPrices,
   getBooksDiscounts,
   getShippingMethods,
-  getShippingPrices,
   createOrder,
   confirmOrder,
   cancelOrder,
   getOrderStatus,
   payInvoice,
-  getUserCars,
-  deleteUser,
+  createBook,
+  updateBookInWarehouse,
+  updateBookPrice,
+  updateBookDiscount,
+  createShipping,
+  deleteShippingMethod,
 };
 
 export default api;

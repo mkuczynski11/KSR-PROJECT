@@ -34,6 +34,11 @@ const PATHS = [
     name: "Faktury",
     isCurrent: false,
   },
+  {
+    path: "/management",
+    name: "Management Panel",
+    isCurrent: false,
+  },
 ];
 
 export default {

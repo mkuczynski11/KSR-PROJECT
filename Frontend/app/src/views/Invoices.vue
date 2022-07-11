@@ -194,55 +194,6 @@ export default {
 
       this.closeInvoiceConfirmationForm();
     },
-
-    // addToBasket(bookID) {
-    //   this.basket.push({
-    //     book: book,
-    //     quantity: this.form.quantity,
-    //   });
-    //   this.form.quantity = null;
-    //   this.$bvModal.hide("book-reservation-modal");
-    // },
-
-    // async viewUser(row) {
-    //   await this.loadUser(row.item);
-    //   row.toggleDetails();
-    // },
-
-    // async loadUser(userObject) {
-    //   let { name, surname, email, birthdate } = await getUser(userObject.login);
-
-    //   userObject.name = name;
-    //   userObject.surname = surname;
-    //   userObject.email = email;
-    //   userObject.birthdate = birthdate;
-    //   userObject.detailsLoaded = true;
-    // },
-
-    // async deleteUser(login) {
-    //   await apiDeleteUser(login);
-    //   this.parseUsers();
-    // },
-
-    // resetCreateForm() {
-    //   for (let key in this.form) {
-    //     this.form[key] = null;
-    //   }
-    // },
-
-    // resetEditForm() {
-    //   for (let key in this.userToEdit) {
-    //     this.form[key] = null;
-    //   }
-    // },
-
-    // async createUser() {
-    //   console.log(this.form);
-    //   await apiCreateUser(this.form);
-    //   this.resetCreateForm();
-    //   this.parseUsers();
-    //   this.closeCreateUserForm();
-    // },
   },
 };
 </script>
