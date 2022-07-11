@@ -12,6 +12,13 @@ using Sales.Models;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Text.Json;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Net.Mime;
+using Microsoft.AspNetCore.Http;
+
+
 namespace Sales
 {
     public class Startup
@@ -85,7 +92,7 @@ namespace Sales
             });
 
             services.AddHealthChecks()
-                .AddMongoDb(mongoDbConfiguration.Connection)
+                .AddMongoDb(mongodbConnectionString: mongoDbConfiguration.Connection, name: "mongoDB", failureStatus: HealthStatus.Unhealthy)
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();
@@ -107,6 +114,22 @@ namespace Sales
                 endpoints.MapControllers();
 
                 endpoints.MapHealthChecks("/health");
+
+                endpoints.MapHealthChecks("/health-details",
+                    new HealthCheckOptions
+                    {
+                        ResponseWriter = async (context, report) =>
+                        {
+                            var result = JsonSerializer.Serialize(
+                                new
+                                {
+                                    status = report.Status.ToString(),
+                                    monitors = report.Entries.Select(e => new { key = e.Key, value = Enum.GetName(typeof(HealthStatus), e.Value.Status) })
+                                });
+                            context.Response.ContentType = MediaTypeNames.Application.Json;
+                            await context.Response.WriteAsync(result);
+                        }
+                    });
             });
         }
 

@@ -46,21 +46,9 @@ namespace ErrorDashboard
                     });
                 });
             });
-            services.AddHealthChecks()
-                .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
         }
 
-        public void Configure(IApplicationBuilder app) 
-        {
-            app.UseRouting();
-
-            app.UseAuthorization();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapHealthChecks("/health");
-            });
-        }
+        public void Configure() { }
 
         public class FaultConsumer : IConsumer<Fault<BaseMessage>>
         {

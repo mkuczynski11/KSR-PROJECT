@@ -8,6 +8,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using MongoDB.Driver;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Text.Json;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Net.Mime;
+using Microsoft.AspNetCore.Http;
+using System.Linq;
 
 namespace Contact
 {
@@ -55,7 +61,7 @@ namespace Contact
             });
 
             services.AddHealthChecks()
-                .AddMongoDb(mongoDbConfiguration.Connection)
+                .AddMongoDb(mongodbConnectionString: mongoDbConfiguration.Connection, name: "mongoDB", failureStatus: HealthStatus.Unhealthy)
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
             services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
             services.AddControllers();
@@ -77,6 +83,22 @@ namespace Contact
                 endpoints.MapControllers();
 
                 endpoints.MapHealthChecks("/health");
+
+                endpoints.MapHealthChecks("/health-details",
+                    new HealthCheckOptions
+                    {
+                        ResponseWriter = async (context, report) =>
+                        {
+                            var result = JsonSerializer.Serialize(
+                                new
+                                {
+                                    status = report.Status.ToString(),
+                                    monitors = report.Entries.Select(e => new { key = e.Key, value = Enum.GetName(typeof(HealthStatus), e.Value.Status) })
+                                });
+                            context.Response.ContentType = MediaTypeNames.Application.Json;
+                            await context.Response.WriteAsync(result);
+                        }
+                    });
             });
         }
     }
