@@ -99,9 +99,9 @@ export async function createBook(book) {
       `${API_URL}/warehouse/books/create`,
       {
         name: book.name,
-        price: book.price,
-        quantity: book.quantity,
-        discount: book.discount,
+        price: parseInt(book.price),
+        quantity: parseInt(book.quantity),
+        discount: parseInt(book.discount),
       },
       {
         headers: {

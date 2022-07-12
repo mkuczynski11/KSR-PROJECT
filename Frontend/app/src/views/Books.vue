@@ -10,11 +10,8 @@
           :items="items"
           show-empty
         >
-          <template #cell(name)="data">
-            {{ data.item.name }}
-          </template>
-          <template #cell(quantity)="data">
-            {{ data.item.quantity }}
+          <template #cell(discount)="data">
+            {{ data.item.discount }}%
           </template>
           <template #cell(zakup)="data">
             <b-button
@@ -132,7 +129,6 @@ import {
   getShippingMethods,
   getBooksPrices,
   getBooksDiscounts,
-  getShippingPrices,
 } from "@/api/api.js";
 
 const BOOK_FIELDS = ["name", "quantity", "unitPrice", "discount", "zakup"];
@@ -251,8 +247,6 @@ export default {
       }
       return true;
     },
-
-    makeStatusToast() {},
 
     async beginOrder() {
       this.order = {

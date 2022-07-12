@@ -382,10 +382,14 @@ export default {
 
     validBookForm() {
       if (
-        this.bookCreationForm["quantity"] <= 0 ||
-        this.bookCreationForm["name"] == "" ||
+        this.bookCreationForm["name"] === "" ||
+        this.bookCreationForm["quantity"] === "" ||
+        this.bookCreationForm["discount"] === "" ||
+        this.bookCreationForm["price"] === "" ||
+        parseInt(this.bookCreationForm["quantity"]) <= 0 ||
         parseInt(this.bookCreationForm["discount"]) < 0 ||
-        parseInt(this.bookCreationForm["price"]) <= 0
+        parseInt(this.bookCreationForm["discount"]) > 100 ||
+        parseInt(this.bookCreationForm["price"]) < 0
       ) {
         return false;
       }
@@ -462,7 +466,22 @@ export default {
     },
 
     async createBook() {
-      await createBook(this.bookCreationForm);
+      let res = await createBook(this.bookCreationForm);
+
+      if (res.status === 200) {
+        this.$bvToast.toast(`Book created correctly!`, {
+          title: "Book changes",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      } else {
+        this.$bvToast.toast(`Failed to create book!`, {
+          title: "Book changes",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      }
+
       this.parseBooks();
       this.closeBookCreationForm();
     },
@@ -479,7 +498,21 @@ export default {
     },
 
     async createShipping() {
-      await createShipping(this.shippingCreationForm);
+      let res = await createShipping(this.shippingCreationForm);
+
+      if (res.status === 200) {
+        this.$bvToast.toast(`Created shipping method correctly!`, {
+          title: "Shipping changes",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      } else {
+        this.$bvToast.toast(`Failed to create shipping method!`, {
+          title: "Shipping changes",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      }
 
       await this.parseShippingMethods();
       this.closeShippingCreationForm();
@@ -487,9 +520,26 @@ export default {
     },
 
     async deleteShipping(method) {
-      await deleteShippingMethod(method);
+      let res = await deleteShippingMethod(method);
+
+      if (res.status === 200) {
+        this.$bvToast.toast(`Deleted shipping method correctly!`, {
+          title: "Shipping changes",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      } else {
+        this.$bvToast.toast(`Failed to delete shipping method!`, {
+          title: "Shipping changes",
+          autoHideDelay: 5000,
+          appendToast: true,
+        });
+      }
+
       await this.parseShippingMethods();
-      this.shippingItems = this.shippingItems.filter((item) => item.name != method.name);
+      this.shippingItems = this.shippingItems.filter(
+        (item) => item.name != method.name
+      );
 
       this.shippingItems = JSON.parse(JSON.stringify(this.shippingItems));
     },
