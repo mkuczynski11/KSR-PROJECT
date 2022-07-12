@@ -14,6 +14,7 @@ using Microsoft.Extensions.Hosting;
 using System.Linq;
 using System.Net.Mime;
 using System.Text.Json;
+using HealthChecks.UI.Client;
 
 namespace Accounting
 {
@@ -81,23 +82,11 @@ namespace Accounting
             {
                 endpoints.MapControllers();
 
-                endpoints.MapHealthChecks("/health");
-
-                endpoints.MapHealthChecks("/health-details",
-                    new HealthCheckOptions
-                    {
-                        ResponseWriter = async (context, report) =>
-                        {
-                            var result = JsonSerializer.Serialize(
-                                new
-                                {
-                                    status = report.Status.ToString(),
-                                    monitors = report.Entries.Select(e => new { key = e.Key, value = Enum.GetName(typeof(HealthStatus), e.Value.Status) })
-                                });
-                            context.Response.ContentType = MediaTypeNames.Application.Json;
-                            await context.Response.WriteAsync(result);
-                        }
-                    });
+                endpoints.MapHealthChecks("/healthz", new HealthCheckOptions
+                {
+                    Predicate = _ => true,
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                });
             });
         }
     }
