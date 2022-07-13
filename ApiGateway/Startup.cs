@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using Ocelot.Cache.CacheManager;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Cors;
 
 namespace ApiGateway
 {
@@ -29,10 +30,8 @@ namespace ApiGateway
 
         public void ConfigureServices(IServiceCollection services)
         {
-<<<<<<< HEAD
             services.AddHealthChecks();
 
-=======
             services.AddCors(options =>
             {
                 options.AddPolicy("CorsPolicy",
@@ -40,7 +39,7 @@ namespace ApiGateway
                         .AllowAnyMethod()
                         .AllowAnyHeader());
             });
->>>>>>> c45d449 (CORS fix)
+
             services.AddOcelot().AddCacheManager(settings =>
                 settings.WithDictionaryHandle()
             );
