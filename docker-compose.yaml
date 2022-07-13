@@ -22,8 +22,6 @@ services:
     context: ./
     dockerfile: ./Dockerfile.ErrorDashboard
    restart: unless-stopped
-   ports:
-    - "86:80"
    depends_on:
     - rabbitmq
   
@@ -32,60 +30,54 @@ services:
     context: ./
     dockerfile: ./Dockerfile.Shipping
    restart: unless-stopped
-   ports:
-    - "85:80"
    depends_on:
     - rabbitmq
+    - mongo
 
   accounting:
     build:
      context: ./
      dockerfile: ./Dockerfile.Accounting
     restart: unless-stopped
-    ports:
-      - "84:80"
     depends_on:
       - rabbitmq
+      - mongo
 
   contact:
     build:
      context: ./
      dockerfile: ./Dockerfile.Contact
     restart: unless-stopped
-    ports:
-      - "83:80"
     depends_on:
       - rabbitmq
+      - mongo
 
   marketing:
     build:
      context: ./
      dockerfile: ./Dockerfile.Marketing
     restart: unless-stopped
-    ports:
-      - "82:80"
     depends_on:
       - rabbitmq
+      - mongo
 
   sales:
     build:
      context: ./
      dockerfile: ./Dockerfile.Sales
     restart: unless-stopped
-    ports:
-      - "81:80"
     depends_on:
       - rabbitmq
+      - mongo
 
   warehouse:
     build:
      context: ./
      dockerfile: ./Dockerfile.Warehouse
     restart: unless-stopped
-    ports:
-      - "80:80"
     depends_on:
       - rabbitmq
+      - mongo
 
   apigateway:
     build:

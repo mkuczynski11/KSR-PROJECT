@@ -60,10 +60,14 @@ namespace Accounting
                 });
             });
 
+            var mongoSettings = MongoClientSettings.FromConnectionString(mongoDbConfiguration.Connection);
+            mongoSettings.ConnectTimeout = TimeSpan.FromSeconds(3);
+            mongoSettings.ServerSelectionTimeout = TimeSpan.FromSeconds(3);
+
             services.AddHealthChecks()
                 .AddMongoDb(mongodbConnectionString: mongoDbConfiguration.Connection, name: "mongoDB", failureStatus: HealthStatus.Unhealthy)
                 .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
-            services.AddSingleton(new MongoClient(mongoDbConfiguration.Connection));
+            services.AddSingleton(new MongoClient(mongoSettings));
             services.AddControllers();
         }
 
