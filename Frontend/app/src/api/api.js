@@ -76,7 +76,7 @@ export async function createOrder(order) {
         BookName: order.book.name,
         BookQuantity: order.quantity,
         BookPrice: order.book.unitPrice,
-        BookDiscount: order.book.discount,
+        BookDiscount: order.book.discount / 100,
         DeliveryMethod: order.deliveryMethod.method,
         DeliveryPrice: order.deliveryMethod.price,
       },
@@ -99,9 +99,9 @@ export async function createBook(book) {
       `${API_URL}/warehouse/books/create`,
       {
         name: book.name,
-        price: parseInt(book.price),
+        price: parseFloat(book.unitPrice),
         quantity: parseInt(book.quantity),
-        discount: parseInt(book.discount),
+        discount: parseInt(book.discount) / 100,
       },
       {
         headers: {
@@ -122,7 +122,7 @@ export async function createShipping(method) {
       `${API_URL}/shipping/methods`,
       {
         Method: method.name,
-        Price: parseInt(method.price),
+        Price: parseFloat(method.price),
       },
       {
         headers: {
@@ -186,7 +186,7 @@ export async function updateBookPrice(book) {
       `${API_URL}/sales/books`,
       {
         BookID: book.id,
-        BookPrice: parseInt(book.unitPrice),
+        BookPrice: parseFloat(book.unitPrice),
       },
       {
         headers: {
@@ -207,7 +207,7 @@ export async function updateBookDiscount(book) {
       `${API_URL}/marketing/books`,
       {
         BookID: book.id,
-        BookDiscount: parseInt(book.discount),
+        BookDiscount: parseInt(book.discount) / 100,
       },
       {
         headers: {

@@ -17,9 +17,7 @@
             <b-button
               variant="success"
               @click="openBookReservationForm(data.item)"
-              :disabled="
-                data.item.quantity == 0
-              "
+              :disabled="data.item.quantity == 0"
               >Zamów</b-button
             >
           </template>
@@ -49,10 +47,7 @@
           <b-col cols="3">
             <b>Total price</b>
           </b-col>
-          <b-col
-            cols="3"
-            v-if="bookToReserve && form.quantity"
-          >
+          <b-col cols="3" v-if="bookToReserve && form.quantity">
             {{
               bookToReserve.unitPrice * parseInt(form.quantity) +
               (chosenShippingMethod != null ? chosenShippingMethod.price : 0)
@@ -74,9 +69,9 @@
             {{
               (
                 bookToReserve.unitPrice *
-                parseInt(form.quantity) *
-                (1 - bookToReserve.discount / 100) +
-              (chosenShippingMethod != null ? chosenShippingMethod.price : 0)
+                  parseInt(form.quantity) *
+                  (1 - (bookToReserve.discount / 100)) +
+                (chosenShippingMethod != null ? chosenShippingMethod.price : 0)
               ).toFixed(2)
             }}
             zł
@@ -193,7 +188,7 @@ export default {
         }
         for (let d of discounts) {
           if (d.id == book.id) {
-            newBook.discount = d.discount;
+            newBook.discount = d.discount * 100;
             break;
           }
         }

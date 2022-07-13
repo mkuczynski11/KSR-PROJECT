@@ -108,6 +108,7 @@
                         class="mt-4"
                         size="md"
                         variant="info"
+                        :disabled="bookChangesInvalid(row.item)"
                         >Save changes</b-button
                       >
                     </b-col>
@@ -149,7 +150,7 @@
                 <b>Price</b>
               </b-col>
               <b-col cols="3">
-                <b-form-input v-model="bookCreationForm.price" type="number" />
+                <b-form-input v-model="bookCreationForm.unitPrice" type="number" />
               </b-col>
               <b-col cols="3">
                 <b>Discount</b>
@@ -259,7 +260,6 @@ import {
   getShippingMethods,
   getBooksPrices,
   getBooksDiscounts,
-  getShippingPrices,
   createBook,
   updateBookInWarehouse,
   updateBookPrice,
@@ -294,7 +294,7 @@ export default {
         name: null,
         quantity: null,
         discount: null,
-        price: null,
+        unitPrice: null,
       },
       shippingCreationForm: {
         name: null,
@@ -317,12 +317,6 @@ export default {
 
     async loadPrices() {
       let res = await getBooksPrices();
-
-      return res;
-    },
-
-    async loadShippingPrices() {
-      let res = await getShippingPrices();
 
       return res;
     },
@@ -352,7 +346,7 @@ export default {
         }
         for (let d of discounts) {
           if (d.id == book.id) {
-            newBook.discount = d.discount;
+            newBook.discount = d.discount * 100;
             break;
           }
         }
@@ -385,11 +379,11 @@ export default {
         this.bookCreationForm["name"] === "" ||
         this.bookCreationForm["quantity"] === "" ||
         this.bookCreationForm["discount"] === "" ||
-        this.bookCreationForm["price"] === "" ||
+        this.bookCreationForm["unitPrice"] === "" ||
         parseInt(this.bookCreationForm["quantity"]) <= 0 ||
         parseInt(this.bookCreationForm["discount"]) < 0 ||
         parseInt(this.bookCreationForm["discount"]) > 100 ||
-        parseInt(this.bookCreationForm["price"]) < 0
+        parseFloat(this.bookCreationForm["unitPrice"]) < 0
       ) {
         return false;
       }
@@ -398,12 +392,29 @@ export default {
 
     validShippingForm() {
       if (
-        this.bookCreationForm["name"] == "" ||
-        this.bookCreationForm["price"] < 0
+        this.shippingCreationForm["name"] == "" ||
+        this.shippingCreationForm["price"] < 0
       ) {
         return false;
       }
       return true;
+    },
+
+    bookChangesInvalid(book) {
+      if (
+        book.unitPrice <= 0 ||
+        book.discount < 0 ||
+        book.discount > 100 ||
+        book.quantity < 0 ||
+        book.unitPrice === '' ||
+        book.discount === '' ||
+        book.quantity === '' ||
+        book.name === ''
+      ) {
+        return true;
+      }
+
+      return false;
     },
 
     async saveBookChanges(book) {
@@ -412,7 +423,7 @@ export default {
       );
 
       let updatePrice =
-        book.price != this.bookBaseItems.find((b) => b.id == book.id).price;
+        book.unitPrice != this.bookBaseItems.find((b) => b.id == book.id).unitPrice;
       let updateQuantity =
         book.quantity !=
         this.bookBaseItems.find((b) => b.id == book.id).quantity;
@@ -454,7 +465,7 @@ export default {
 
     openBookCreationForm() {
       this.bookCreationForm.name = "DefaultName";
-      this.bookCreationForm.price = 49;
+      this.bookCreationForm.unitPrice = 49;
       this.bookCreationForm.quantity = 1;
       this.bookCreationForm.discount = 0;
 
