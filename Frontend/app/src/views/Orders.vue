@@ -28,6 +28,7 @@
               @click="openOrderCancellationForm(data.item)"
               :disabled="
                 data.item.status == 'Shipped to customer' ||
+                data.item.status == 'Awaiting shipment' ||
                 data.item.status == 'Canceled' ||
                 data.item.status == 'Awaiting payment'
               "
@@ -40,6 +41,7 @@
               @click="openOrderConfirmationForm(data.item)"
               :disabled="
                 data.item.status == 'Shipped to customer' ||
+                data.item.status == 'Awaiting shipment' ||
                 data.item.status == 'Canceled' ||
                 data.item.status == 'Awaiting payment'
               "
@@ -86,13 +88,7 @@
 </template>
 
 <script>
-import {
-  getOrderStatus,
-  getBooksPrices,
-  getBooksDiscounts,
-  confirmOrder,
-  cancelOrder,
-} from "@/api/api.js";
+import { getOrderStatus, confirmOrder, cancelOrder } from "@/api/api.js";
 
 const ORDER_FIELDS = [
   "ID",

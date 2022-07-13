@@ -28,6 +28,7 @@
               @click="openInvoiceConfirmationForm(data.item)"
               :disabled="
                 data.item.status == 'Shipped to customer' ||
+                data.item.status == 'Awaiting shipment' ||
                 data.item.status == 'Canceled'
               "
               >Potwierdź</b-button
@@ -53,23 +54,14 @@
         <b-button variant="danger" @click="closeInvoiceConfirmationForm()">
           Cancel
         </b-button>
-        <b-button
-          variant="success"
-          @click="payInvoice()"
-          >Pay invoice</b-button
-        >
+        <b-button variant="success" @click="payInvoice()">Pay invoice</b-button>
       </template>
     </b-modal>
   </b-container>
 </template>
 
 <script>
-import {
-  getOrderStatus,
-  getBooksPrices,
-  getBooksDiscounts,
-  payInvoice,
-} from "@/api/api.js";
+import { getOrderStatus, payInvoice } from "@/api/api.js";
 
 const INVOICE_FIELDS = [
   "ID",
@@ -89,9 +81,6 @@ export default {
       fields: INVOICE_FIELDS,
       invoicesLoaded: false,
       invoiceToPay: null,
-      currentPrice: null,
-      currentPriceLoaded: false,
-      currentDiscountLoaded: false,
     };
   },
 
@@ -130,7 +119,6 @@ export default {
           getOrderStatus(invoice.id).then((status) => {
             let index = this.invoices.indexOf(invoice);
             this.items[index].status = status.status;
-
             if (
               this.items[index].status == "Canceled" &&
               this.invoiceToPay.id == invoice.id
@@ -144,30 +132,12 @@ export default {
 
     async openInvoiceConfirmationForm(invoice) {
       this.invoiceToPay = invoice;
-      await this.loadCurrentPrice(invoice.bookId);
-      await this.loadCurrentDiscount(invoice.bookId);
 
       this.$bvModal.show("pay-invoice-modal");
     },
 
     closeInvoiceConfirmationForm() {
       this.$bvModal.hide("pay-invoice-modal");
-    },
-
-    async loadCurrentPrice(bookId) {
-      this.currentPriceLoaded = false;
-
-      let prices = await getBooksPrices();
-      this.currentPrice = prices.find((price) => price.id === bookId).price;
-      this.currentPriceLoaded = true;
-    },
-
-    async loadCurrentDiscount(bookId) {
-      this.currentDiscountLoaded = false;
-
-      let prices = await getBooksDiscounts();
-      this.currentDiscount = prices.find((d) => d.id === bookId).discount;
-      this.currentDiscountLoaded = true;
     },
 
     async payInvoice() {
