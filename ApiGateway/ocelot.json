@@ -18,7 +18,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 10,
-        "Limit": 1,
+        "Limit": 10,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/contact/orders/create",
@@ -40,7 +40,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 5,
-        "Limit": 2,
+        "Limit": 20,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/contact/orders/{id}/{everything}",
@@ -62,7 +62,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 1,
-        "Limit": 5,
+        "Limit": 50,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/contact/orders/{id}/status",
@@ -86,7 +86,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 1,
-        "Limit": 5,
+        "Limit": 50,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/accounting/invoices/{id}",
@@ -108,7 +108,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 5,
-        "Limit": 2,
+        "Limit": 20,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/accounting/invoices/{id}/pay",
@@ -132,7 +132,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 1,
-        "Limit": 5,
+        "Limit": 50,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/marketing/books",
@@ -168,7 +168,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 1,
-        "Limit": 5,
+        "Limit": 50,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/sales/books",
@@ -204,7 +204,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 1,
-        "Limit": 5,
+        "Limit": 50,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/shipping/{everything}",
@@ -240,7 +240,7 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 1,
-        "Limit": 5,
+        "Limit": 50,
         "HttpStatusCode": 429
       },
       "UpstreamPathTemplate": "/api/warehouse/books",
