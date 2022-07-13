@@ -1,7 +1,9 @@
 using Common;
 using ErrorDashboard.Configuration;
+using HealthChecks.UI.Client;
 using MassTransit;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -29,6 +31,9 @@ namespace ErrorDashboard
             var rabbitConfiguration = Configuration.GetSection("RabbitMQ").Get<RabbitMQConfiguration>();
             var endpointConfiguration = Configuration.GetSection("Endpoint").Get<EndpointConfiguration>();
 
+            services.AddHealthChecks()
+                .AddRabbitMQ(rabbitConnectionString: rabbitConfiguration.ConnStr);
+
             services.AddMassTransit(x =>
             {
                 x.AddConsumer<FaultConsumer>();
@@ -46,9 +51,25 @@ namespace ErrorDashboard
                     });
                 });
             });
+
+            services.AddControllers();
         }
 
-        public void Configure() { }
+        public void Configure(IApplicationBuilder app) 
+        {
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+
+                endpoints.MapHealthChecks("/healthz", new HealthCheckOptions
+                {
+                    Predicate = _ => true,
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                });
+            });
+        }
 
         public class FaultConsumer : IConsumer<Fault<BaseMessage>>
         {

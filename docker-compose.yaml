@@ -9,6 +9,14 @@ services:
       - "5672:5672"
       - "15672:15672"
 
+  watchdog:
+   build:
+    context: ./
+    dockerfile: ./Dockerfile.Watchdog
+   restart: unless-stopped
+   ports:
+    - "8082:80"
+
   errordashboard:
    build:
     context: ./

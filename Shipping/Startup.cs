@@ -19,6 +19,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Net.Mime;
 using Microsoft.AspNetCore.Http;
+using HealthChecks.UI.Client;
 
 namespace Shipping
 {
@@ -98,23 +99,11 @@ namespace Shipping
             {
                 endpoints.MapControllers();
 
-                endpoints.MapHealthChecks("/health");
-
-                endpoints.MapHealthChecks("/health-details",
-                    new HealthCheckOptions
-                    {
-                        ResponseWriter = async (context, report) =>
-                        {
-                            var result = JsonSerializer.Serialize(
-                                new
-                                {
-                                    status = report.Status.ToString(),
-                                    monitors = report.Entries.Select(e => new { key = e.Key, value = Enum.GetName(typeof(HealthStatus), e.Value.Status) })
-                                });
-                            context.Response.ContentType = MediaTypeNames.Application.Json;
-                            await context.Response.WriteAsync(result);
-                        }
-                    });
+                endpoints.MapHealthChecks("/healthz", new HealthCheckOptions
+                {
+                    Predicate = _ => true,
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                });
             });
         }
 
@@ -131,7 +120,8 @@ namespace Shipping
             methods.Add(new Method("Poczta polska", 13.0));
             methods.Add(new Method("Odbiór osobisty", 0.0));
 
-            collection.InsertMany(methods);
+            if (collection.Find(o => o.MethodValue.Equals(methods[0].MethodValue)).SingleOrDefault() == null)
+                collection.InsertMany(methods);
         }
 
         public class DeliveryStateMachine : MassTransitStateMachine<DeliveryState>, IDisposable
